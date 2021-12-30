@@ -261,7 +261,7 @@ static CGFloat      const kSFBioViewBorderWidth                = 0.5f;
 
 - (void)userDenyBiometricEnablement
 {
-    [self.biometricResponseDelgate biometricUnlockFailed:self.verificationMode];
+    [self.biometricResponseDelgate biometricUnlockDeclined:self.verificationMode];
 }
 
 - (void)showBiometricSetup
