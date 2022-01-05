@@ -140,12 +140,6 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
 }
 @end
 
-@interface SFUserAccountManager ()
-
-@property (nonatomic, strong) SFSDKAuthSession *authSession;
-
-@end
-
 @implementation SFUserAccountManager
 
 @synthesize currentUser = _currentUser;
@@ -1587,25 +1581,22 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
           __strong typeof(weakSelf) strongSelf = weakSelf;
         [strongSelf finalizeAuthCompletionForUserAccount:authSession];
         if (authSession.authInfo.authType != SFOAuthTypeRefresh) {
-            [[SFScreenLockManager shared] storeMobilePolicyWithUserAccount:self.currentUser hasMobilePolicy:hasMobilePolicy];
-            [[SFScreenLockManager shared] setCallbackBlockWithScreenLockCallbackBlock:^{
-                [weakSelf finalizeAuthCompletionForCallbacksAndNotification:authSession];
-            }];
-            [[SFScreenLockManager shared] handleAppForeground];
-       }
+            [strongSelf checkBiometric:authSession hasMobilePolicy:hasMobilePolicy];
+        }
     }];
     [self dismissAuthViewControllerIfPresent];
 }
 
-//- (void)checkBiometric:(SFSDKAuthSession *)authSession
-//{
-//    __weak typeof(self) weakSelf = self;
-//    [[SFScreenLockManager shared] setCallbackBlockWithScreenLockCallbackBlock:^{
-//        __strong typeof(weakSelf) strongSelf = weakSelf;
-//        [strongSelf finalizeAuthCompletionForCallbacksAndNotification:authSession];
-//    }];
-//    [[SFScreenLockManager shared] handleAppForeground];
-//}
+- (void)checkBiometric:(SFSDKAuthSession *)authSession hasMobilePolicy:(BOOL)hasMobilePolicy
+{
+    [[SFScreenLockManager shared] storeMobilePolicyWithUserAccount:self.currentUser hasMobilePolicy:hasMobilePolicy];
+    __weak typeof(self) weakSelf = self;
+    [[SFScreenLockManager shared] setCallbackBlockWithScreenLockCallbackBlock:^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        [strongSelf finalizeAuthCompletionForCallbacksAndNotification:authSession];
+    }];
+    [[SFScreenLockManager shared] handleAppForeground];
+}
 
 - (void)handleFailure:(NSError *)error session:(SFSDKAuthSession *)authSession {
     if (authSession.authFailureCallback) {
@@ -1686,7 +1677,7 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     
     // Async call, ignore if theres a failure. If success save the user photo locally.
     [self retrieveUserPhotoIfNeeded:userAccount];
-
+    
     if (self.currentUser == nil || !authSession.oauthRequest.authenticateRequestFromSPApp) {
         [self setCurrentUserInternal:userAccount];
     }
