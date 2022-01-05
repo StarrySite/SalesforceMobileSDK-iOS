@@ -59,7 +59,6 @@ struct ScreenLockRetryUIView: View {
     @State var hasError = false
     @State var canEvaluatePolicy = false
     @State var errorText = ""
-    @State var isPasscodeRetry = false
     private let canLogout = true
 
     var body: some View {
@@ -110,18 +109,12 @@ struct ScreenLockRetryUIView: View {
                 }
             })
         }.onAppear(perform: {
-            if !isPasscodeRetry {
-                showBiometric()
-            }
+            showBiometric()
         })
     }
 
     func retryUnlock() {
-        if isPasscodeRetry {
-            ScreenLockManager.shared.showPasscode()
-        } else {
-            showBiometric()
-        }
+        showBiometric()
     }
 
     func showBiometric() {

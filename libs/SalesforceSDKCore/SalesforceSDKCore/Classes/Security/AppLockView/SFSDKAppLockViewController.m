@@ -150,11 +150,6 @@
     }
 }
 
-- (void)biometricUnlockDeclined:(BOOL)isVerificationMode
-{
-    [self biometricUnlockFailed:isVerificationMode];
-}
-
 - (void)dismissStandaloneBiometricSetup
 {
     [SFSecurityLockout setupTimer];

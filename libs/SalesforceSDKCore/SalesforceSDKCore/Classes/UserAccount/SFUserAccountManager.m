@@ -60,7 +60,6 @@
 #import "SFSDKSalesforceAnalyticsManager.h"
 #import "SFSecurityLockout+Internal.h"
 #import "SFApplicationHelper.h"
-#import "SFSDKBiometricViewController.h"
 #import <SalesforceSDKCore/SalesforceSDKCore-Swift.h>
 
 // Notifications
@@ -144,10 +143,6 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
 @interface SFUserAccountManager ()
 
 @property (nonatomic, strong) SFSDKAuthSession *authSession;
-
-@end
-
-@interface SFUserAccountManager () <SFSDKBiometricViewDelegate>
 
 @end
 
@@ -1584,34 +1579,33 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     // NB: This method is assumed to run after identity data has been refreshed from the service, or otherwise
     // already exists.
     NSAssert(authSession.identityCoordinator.idData != nil, @"Identity data should not be nil/empty at this point.");
+    SFIdentityCoordinator *identityCoordinator = authSession.identityCoordinator;
+    BOOL hasMobilePolicy = identityCoordinator.idData.mobilePoliciesConfigured;
     
-    if (authSession.authInfo.authType != SFOAuthTypeRefresh) {
-        self.authSession = authSession;
-        if ([[SFScreenLockManager shared] hasBiometric]) {
-            [self promptBiometricEnrollmentUsingScene:authSession.oauthRequest.scene];
-        } else {
-            [self biometricUnlockFailed:NO];
-        }
-    } else {
-        [self dismissAuthViewControllerIfPresent];
-    }
-}
-
-- (void)dismissAuthViewAndFinalizeAuthCompletion
-{
     __weak typeof(self) weakSelf = self;
-    [self dismissAuthViewControllerIfPresentForScene:self.authSession.oauthRequest.scene completion:^{
+    [self dismissAuthViewControllerIfPresentForScene:authSession.oauthRequest.scene completion:^{
           __strong typeof(weakSelf) strongSelf = weakSelf;
-        [strongSelf finalizeAuthCompletionAndStoreMobilePolicy:strongSelf.authSession];
+        [strongSelf finalizeAuthCompletionForUserAccount:authSession];
+        if (authSession.authInfo.authType != SFOAuthTypeRefresh) {
+            [[SFScreenLockManager shared] storeMobilePolicyWithUserAccount:self.currentUser hasMobilePolicy:hasMobilePolicy];
+            [[SFScreenLockManager shared] setCallbackBlockWithScreenLockCallbackBlock:^{
+                [weakSelf finalizeAuthCompletionForCallbacksAndNotification:authSession];
+            }];
+            [[SFScreenLockManager shared] handleAppForeground];
+       }
     }];
+    [self dismissAuthViewControllerIfPresent];
 }
 
-- (void)finalizeAuthCompletionAndStoreMobilePolicy:(SFSDKAuthSession *)authSession
-{
-    BOOL hasMobilePolicy = authSession.identityCoordinator.idData.mobilePoliciesConfigured;
-    [self finalizeAuthCompletion:authSession];
-    [[SFScreenLockManager shared] storeMobilePolicyWithUserAccount:self.currentUser hasMobilePolicy:hasMobilePolicy];
-}
+//- (void)checkBiometric:(SFSDKAuthSession *)authSession
+//{
+//    __weak typeof(self) weakSelf = self;
+//    [[SFScreenLockManager shared] setCallbackBlockWithScreenLockCallbackBlock:^{
+//        __strong typeof(weakSelf) strongSelf = weakSelf;
+//        [strongSelf finalizeAuthCompletionForCallbacksAndNotification:authSession];
+//    }];
+//    [[SFScreenLockManager shared] handleAppForeground];
+//}
 
 - (void)handleFailure:(NSError *)error session:(SFSDKAuthSession *)authSession {
     if (authSession.authFailureCallback) {
@@ -1667,7 +1661,7 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     [_accountsLock unlock];
 }
 
-- (void)finalizeAuthCompletion:(SFSDKAuthSession *)authSession {
+- (void)finalizeAuthCompletionForUserAccount:(SFSDKAuthSession *)authSession {
     // Apply the credentials that will ensure there is a user and that this
     // current user as the proper credentials.
     SFUserAccount *userAccount = [self applyCredentials:authSession.oauthCoordinator.credentials withIdData:authSession.identityCoordinator.idData];
@@ -1692,21 +1686,22 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     
     // Async call, ignore if theres a failure. If success save the user photo locally.
     [self retrieveUserPhotoIfNeeded:userAccount];
-    BOOL shouldNotify = YES;
-    
+
     if (self.currentUser == nil || !authSession.oauthRequest.authenticateRequestFromSPApp) {
         [self setCurrentUserInternal:userAccount];
     }
+}
 
-    shouldNotify = authSession.oauthRequest.authenticateRequestFromSPApp?(authSession.oauthRequest.authenticateRequestFromSPApp && self.currentUser == nil):YES;
+- (void)finalizeAuthCompletionForCallbacksAndNotification:(SFSDKAuthSession *)authSession {
+    BOOL shouldNotify = authSession.oauthRequest.authenticateRequestFromSPApp?(authSession.oauthRequest.authenticateRequestFromSPApp && self.currentUser == nil):YES;
     SFOAuthInfo *authInfo = authSession.authInfo;
     
     if (authSession.authSuccessCallback) {
-        authSession.authSuccessCallback(authSession.authInfo, userAccount);
+        authSession.authSuccessCallback(authSession.authInfo, self.currentUser);
     }
     //notify for all login flows except during an SP apps login request.
     if (shouldNotify) {
-        [self notifyLoginCompletion:userAccount authInfo:authInfo];
+        [self notifyLoginCompletion:self.currentUser authInfo:authInfo];
     }
     
     
@@ -1955,38 +1950,5 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     return controller;
 }
 
-- (void)promptBiometricEnrollmentUsingScene:(nullable UIScene *)scene
-{
-    SFSDKBiometricViewController *pvc = [[SFSDKBiometricViewController alloc] initWithViewConfig:self.appLockViewControllerConfig];
-    pvc.biometricResponseDelgate = self;
-    pvc.modalPresentationStyle = UIModalPresentationFullScreen;
-
-    SFSDKWindowContainer *authWindow = [[SFSDKWindowManager sharedManager] authWindow:scene];
-    UIViewController *presentedViewController = authWindow.viewController.presentedViewController;
-    if ([presentedViewController isMemberOfClass:[SFSDKNavigationController class]]) {
-        SFSDKNavigationController *navController = (SFSDKNavigationController *)presentedViewController;
-        [navController pushViewController:pvc animated:NO];
-        [navController setNavigationBarHidden:NO];
-    }
-}
-
-#pragma mark - SFSDKBiometricViewDelegate
-
-- (void)biometricUnlockSucceeded:(BOOL)isVerificationMode
-{
-    [[SFScreenLockManager shared] userAllowedBiometricUnlockWithAllowed:YES];
-    [self dismissAuthViewAndFinalizeAuthCompletion];
-}
-
-- (void)biometricUnlockFailed:(BOOL)isVerificationMode
-{
-    [self dismissAuthViewAndFinalizeAuthCompletion];
-}
-
-- (void)biometricUnlockDeclined:(BOOL)isVerificationMode
-{
-    [[SFScreenLockManager shared] userAllowedBiometricUnlockWithAllowed:NO];
-    [self dismissAuthViewAndFinalizeAuthCompletion];
-}
 
 @end

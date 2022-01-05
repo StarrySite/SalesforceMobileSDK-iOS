@@ -37,8 +37,6 @@ SFSDK_DEPRECATED(9.2, 10.0, "Will be removed in 10.0.")
 
 - (void)biometricUnlockFailed:(BOOL)isVerificationMode;
 
-- (void)biometricUnlockDeclined:(BOOL)isVerificationMode;
-
 @end
 
 SFSDK_DEPRECATED(9.2, 10.0, "Will be removed in 10.0.")

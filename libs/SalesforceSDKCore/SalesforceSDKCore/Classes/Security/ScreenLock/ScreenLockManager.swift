@@ -27,7 +27,6 @@
 
 import Foundation
 import SwiftUI
-import LocalAuthentication
 
 // Callback block used to launch the app when the screen is unlocked.
 public typealias ScreenLockCallbackBlock = () -> Void
@@ -37,7 +36,6 @@ public class ScreenLockManager: NSObject {
     @objc public static let shared = ScreenLockManager()
     
     private let kScreenLockIdentifier = "com.salesforce.security.screenlock"
-    private let kBiometricStateKey = "com.salesforce.security.biometric.state"
     private var callbackBlock: ScreenLockCallbackBlock? = nil
     
     public var screenLockUiConfiguration = ScreenLockViewConfiguration()
@@ -210,20 +208,9 @@ public class ScreenLockManager: NSObject {
         // Send flow will begin notification
         SFSDKCoreLogger.d(ScreenLockManager.self, message: "Sending Screen Lock flow will begin notification")
         NotificationCenter.default.post(name: Notification.Name(rawValue: kSFScreenLockFlowWillBegin), object: nil)
-
-        let _ = hasBiometric()   // Calling this here, to ensure the appropriate `BiometricState`
-        let biometricState = SFPreferences.global().integer(forKey: kBiometricStateKey)
-        if biometricState == BiometricUnlockState.declined.rawValue ||
-            biometricState == BiometricUnlockState.unavailable.rawValue {
-            showPasscodeScreen()
-        } else {
-            showScreenLock(uiView: ScreenLockRetryUIView(configuration: screenLockUiConfiguration))
-        }
-    }
-
-    private func showScreenLock(uiView: ScreenLockRetryUIView) {
+        
         // Launch Screen Lock
-        let screenLockViewController = UIHostingController(rootView: uiView)
+        let screenLockViewController = UIHostingController(rootView: ScreenLockRetryUIView(configuration: screenLockUiConfiguration))
         screenLockViewController.modalPresentationStyle = .fullScreen
         SFSDKWindowManager.shared().screenLockWindow().presentWindow(animated: false) {
             SFSDKWindowManager.shared().screenLockWindow().viewController?.present(screenLockViewController, animated: false, completion: nil)
@@ -233,87 +220,5 @@ public class ScreenLockManager: NSObject {
     private struct MobilePolicy: Encodable, Decodable {
         let hasPolicy: Bool
     }
-
-    @objc public func userAllowedBiometricUnlock(allowed: Bool) {
-        setBiometricState(state: allowed ? .approved : .declined)
-    }
-
-    private func setBiometricState(state: BiometricUnlockState) {
-        SFPreferences.global().setInteger(Int(state.rawValue), forKey: kBiometricStateKey)
-        SFPreferences.global().synchronize()
-    }
-
-    public func isBiometricEnrolled() -> Bool {
-        return SFPreferences.global().integer(forKey: kBiometricStateKey) == BiometricUnlockState.approved.rawValue
-    }
-
-    @objc public func hasBiometric() -> Bool {
-        let context = LAContext()
-        var error: NSError?
-        let available = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
-        if available {
-            // If biometric was unavailable earlier and is available now, then
-            // that means user wants to use biometric for this app, therefore
-            // updating state to approved.
-            let biometricState = SFPreferences.global().integer(forKey: kBiometricStateKey)
-            if biometricState == BiometricUnlockState.unavailable.rawValue {
-                setBiometricState(state: .approved)
-            }
-        } else {
-            setBiometricState(state: .unavailable)
-            let message = "Device cannot use Touch Id or Face Id. Error: \(String(describing: error))"
-            SFSDKCoreLogger.d(ScreenLockManager.self, message: message)
-        }
-        return available
-    }
-
-    private func saveDevicePasscode() {
-        let secAccessControlbject: SecAccessControl = SecAccessControlCreateWithFlags(kCFAllocatorDefault,
-                                                                                      kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-                                                                                      .devicePasscode,
-                                                                                      nil)!
-        let dataToStore = "AnyData".data(using: .utf8)!
-
-        let insertQuery: NSDictionary = [
-            kSecClass: kSecClassGenericPassword,
-            kSecAttrAccessControl: secAccessControlbject,
-            kSecAttrService: "PasscodeAuthentication",
-            kSecValueData: dataToStore as Any,
-        ]
-
-        _ = SecItemAdd(insertQuery as CFDictionary, nil)
-    }
-
-    private func showPasscodeScreen() {
-        saveDevicePasscode()
-        showPasscode()
-    }
-
-    func showPasscode() {
-        let query: NSDictionary = [
-            kSecClass:  kSecClassGenericPassword,
-            kSecAttrService  : "PasscodeAuthentication",
-            kSecUseOperationPrompt : "Sign in"
-        ]
-
-        var typeRef : CFTypeRef?
-
-        let status: OSStatus = SecItemCopyMatching(query, &typeRef) //This will prompt the passcode.
-
-        if (status == errSecSuccess) {
-            unlock()
-        } else {
-            let errorText = SecCopyErrorMessageString(status, nil) as String? ?? ""
-            showRetryUnlockScreen(forPasscode: true, errorText: errorText)
-        }
-    }
-
-    private func showRetryUnlockScreen(forPasscode: Bool, errorText: String) {
-        let view = ScreenLockRetryUIView(configuration: screenLockUiConfiguration,
-                                         hasError: true,
-                                         canEvaluatePolicy: true,
-                                         errorText: errorText,
-                                         isPasscodeRetry: true)
-        showScreenLock(uiView: view)
-    }
 }
+
