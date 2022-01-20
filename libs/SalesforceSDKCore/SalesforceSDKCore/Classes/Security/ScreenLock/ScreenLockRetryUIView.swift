@@ -39,17 +39,20 @@ public struct ScreenLockViewConfiguration {
     let buttonTitleColor: UIColor
     let background: Background
     let appIconImage: UIImage
+    let shouldShowError: Bool
 
     public init(textColor: UIColor = .salesforceDefaultText,
                 buttonTitleColor: UIColor = .white,
                 buttonBackgroundColor: UIColor = .salesforceBlue,
                 appIconImage: UIImage = SFSDKResourceUtils.imageNamed("salesforce-logo"),
-                background: Background = Background.color(.salesforceSystemBackground)) {
+                background: Background = Background.color(.salesforceSystemBackground),
+                shouldShowError: Bool = true) {
         self.textColor = textColor
         self.buttonTitleColor = buttonTitleColor
         self.buttonBackgroundColor = buttonBackgroundColor
         self.appIconImage = appIconImage
         self.background = background
+        self.shouldShowError = shouldShowError
     }
 }
 
@@ -85,10 +88,11 @@ struct ScreenLockRetryUIView: View {
 
                 if hasError {
                     VStack {
-                        Text(errorText)
-                            .foregroundColor(Color(configuration.textColor))
-                            .padding()
-
+                        if configuration.shouldShowError {
+                            Text(errorText)
+                                .foregroundColor(Color(configuration.textColor))
+                                .padding()
+                        }
                         if canEvaluatePolicy {
                             Button(action: retryUnlock) {
                                 Text(SFSDKResourceUtils.localizedString("retryButtonTitle"))
@@ -144,11 +148,19 @@ struct ScreenLockRetryUIView: View {
     }
     
     private func getImageOffset() -> CGFloat {
-        return hasError ?
-            (canLogout ?
-                (canEvaluatePolicy ? -290 : -350) :
-                (canEvaluatePolicy ? -350 : -410)
-            ) : -470
+        var offset: CGFloat = -470
+        if hasError {
+            if configuration.shouldShowError && !errorText.isEmpty {
+                offset += 60
+            }
+            if canEvaluatePolicy {
+                offset += 60
+            }
+            if canLogout {
+                offset += 60
+            }
+        }
+        return offset
     }
 }
 
