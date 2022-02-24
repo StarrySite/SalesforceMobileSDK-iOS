@@ -38,6 +38,8 @@ public class ScreenLockManager: NSObject {
     private let kScreenLockIdentifier = "com.salesforce.security.screenlock"
     private var callbackBlock: ScreenLockCallbackBlock? = nil
     
+    public var screenLockUiConfiguration = ScreenLockViewConfiguration()
+
     private override init() {}
     
     // MARK: Screen Lock Manager
@@ -208,7 +210,7 @@ public class ScreenLockManager: NSObject {
         NotificationCenter.default.post(name: Notification.Name(rawValue: kSFScreenLockFlowWillBegin), object: nil)
         
         // Launch Screen Lock
-        let screenLockViewController = UIHostingController(rootView: ScreenLockUIView())
+        let screenLockViewController = UIHostingController(rootView: ScreenLockRetryUIView(configuration: screenLockUiConfiguration))
         screenLockViewController.modalPresentationStyle = .fullScreen
         SFSDKWindowManager.shared().screenLockWindow().presentWindow(animated: false) {
             SFSDKWindowManager.shared().screenLockWindow().viewController?.present(screenLockViewController, animated: false, completion: nil)
