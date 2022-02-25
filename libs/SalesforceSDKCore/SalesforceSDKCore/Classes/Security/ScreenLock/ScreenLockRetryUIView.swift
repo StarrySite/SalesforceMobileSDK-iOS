@@ -83,26 +83,23 @@ struct ScreenLockRetryUIView: View {
                 Image(uiImage: configuration.appIconImage)
                     .resizable()
                     .frame(width: 125, height: 125, alignment: /*@START_MENU_TOKEN@*/.center/*@END_MENU_TOKEN@*/)
-                    .offset(y: getImageOffset())
-                    .padding()
+
+                Spacer()
+                Spacer()
 
                 if hasError {
                     VStack {
-                        if configuration.shouldShowError {
+                        // If canEvaluatePolicy = false, then Retry button is not shown. So, we need to
+                        // definitely show error on screen for user to understand the problem.
+                        if configuration.shouldShowError || !canEvaluatePolicy {
                             Text(errorText)
+                                .multilineTextAlignment(.center)
                                 .foregroundColor(Color(configuration.textColor))
                                 .padding()
                         }
                         if canEvaluatePolicy {
                             Button(action: retryUnlock) {
                                 Text(SFSDKResourceUtils.localizedString("retryButtonTitle"))
-                                    .foregroundColor(Color(configuration.buttonTitleColor))
-                            }
-                            .padding()
-                            .background(Color(configuration.buttonBackgroundColor).cornerRadius(5))
-                        } else {
-                            Button(action: openSetup) {
-                                Text(SFSDKResourceUtils.localizedString("screenLockSetupButtonTitle"))
                                     .foregroundColor(Color(configuration.buttonTitleColor))
                             }
                             .padding()
@@ -152,26 +149,6 @@ struct ScreenLockRetryUIView: View {
             hasError = true
             canEvaluatePolicy = false
         }
-    }
-    
-    func openSetup() {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url, options: [:], completionHandler: nil)
-        }
-    }
-
-    private func getImageOffset() -> CGFloat {
-        var offset: CGFloat = -470
-        if hasError {
-            if configuration.shouldShowError && !errorText.isEmpty {
-                offset += 60
-            }
-            offset += 60
-            if canLogout {
-                offset += 60
-            }
-        }
-        return offset
     }
 }
 

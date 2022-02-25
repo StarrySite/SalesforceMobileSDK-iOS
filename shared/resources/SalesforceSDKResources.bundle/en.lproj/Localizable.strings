@@ -59,7 +59,6 @@
 "setUpPasscodeMessage" = "%@ requires you to set up an iOS passcode to use the app.";
 "fallbackErrorMessage" = "An unexpected error occurred.";
 "accessibilityLoggedOutAnnouncement" = "You are logged out.";
-"screenLockSetupButtonTitle" = "Setup Lock Screen";
 
 // OAuth flow
 "authAlertContinueButton"="Continue";
