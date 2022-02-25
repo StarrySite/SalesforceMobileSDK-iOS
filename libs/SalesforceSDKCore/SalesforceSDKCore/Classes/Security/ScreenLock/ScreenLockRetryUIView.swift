@@ -100,6 +100,13 @@ struct ScreenLockRetryUIView: View {
                             }
                             .padding()
                             .background(Color(configuration.buttonBackgroundColor).cornerRadius(5))
+                        } else {
+                            Button(action: openSetup) {
+                                Text(SFSDKResourceUtils.localizedString("screenLockSetupButtonTitle"))
+                                    .foregroundColor(Color(configuration.buttonTitleColor))
+                            }
+                            .padding()
+                            .background(Color(configuration.buttonBackgroundColor).cornerRadius(5))
                         }
                         if canLogout {
                             Button(action: { logout() },
@@ -147,15 +154,19 @@ struct ScreenLockRetryUIView: View {
         }
     }
     
+    func openSetup() {
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
+        }
+    }
+
     private func getImageOffset() -> CGFloat {
         var offset: CGFloat = -470
         if hasError {
             if configuration.shouldShowError && !errorText.isEmpty {
                 offset += 60
             }
-            if canEvaluatePolicy {
-                offset += 60
-            }
+            offset += 60
             if canLogout {
                 offset += 60
             }
