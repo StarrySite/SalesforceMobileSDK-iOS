@@ -193,7 +193,8 @@ Set this block to handle presentation of the Authentication View Controller.
 
 - (BOOL)loginWithCompletion:(nullable SFUserAccountManagerSuccessCallbackBlock)completionBlock
                     failure:(nullable SFUserAccountManagerFailureCallbackBlock)failureBlock
-                      scene:(nullable UIScene *)scene;
+                      scene:(nullable UIScene *)scene 
+                   loginUrl:(nullable NSURL *)loginUrl;
 
 @end
 
