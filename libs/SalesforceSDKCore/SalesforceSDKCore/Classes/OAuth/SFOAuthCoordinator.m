@@ -400,7 +400,8 @@
     if ([self.delegate respondsToSelector:@selector(oauthCoordinator:willBeginAuthenticationWithView:)]) {
         [self.delegate oauthCoordinator:self willBeginAuthenticationWithView:self.view];
     }
-    NSString *approvalUrlString = [self generateApprovalUrlString];
+    NSString *approvalUrlString = (self.loginUrl == nil) ? [self generateApprovalUrlString] : self.loginUrl.absoluteString;
+    self.loginUrl = nil;
     [self loadWebViewWithUrlString:approvalUrlString cookie:YES];
 }
 
