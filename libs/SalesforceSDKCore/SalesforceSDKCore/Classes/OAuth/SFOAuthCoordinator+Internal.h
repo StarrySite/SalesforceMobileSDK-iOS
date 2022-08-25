@@ -48,9 +48,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong ,nullable) SFOAuthCredentials *spAppCredentials;
 @property (nonatomic, weak, nullable) SFSDKAuthSession *authSession;
 
-/// This faciliates loading a URL from the Host app.
-@property (nonatomic, strong, nullable) NSURL *loginUrl;
-
 - (instancetype)initWithAuthSession:(SFSDKAuthSession *)authSession;
 
 /** UpdateCredentials and record changes to instanceUrl,accessToken,communityId

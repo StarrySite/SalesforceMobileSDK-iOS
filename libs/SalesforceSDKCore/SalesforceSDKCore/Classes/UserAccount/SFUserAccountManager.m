@@ -348,16 +348,13 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
 - (BOOL)loginWithCompletion:(SFUserAccountManagerSuccessCallbackBlock)completionBlock failure:(SFUserAccountManagerFailureCallbackBlock)failureBlock {
     BOOL result = NO;
     for (UIScene *scene in [SFApplicationHelper sharedApplication].connectedScenes) {
-        result |= [self loginWithCompletion:completionBlock failure:failureBlock scene:scene loginUrl:nil];
+        result |= [self loginWithCompletion:completionBlock failure:failureBlock scene:scene];
     }
     return result;
 }
 
-- (BOOL)loginWithCompletion:(SFUserAccountManagerSuccessCallbackBlock)completionBlock 
-                    failure:(SFUserAccountManagerFailureCallbackBlock)failureBlock 
-                      scene:(UIScene *)scene 
-                   loginUrl:(nullable NSURL *)loginUrl {
-    return [self authenticateWithCompletion:completionBlock failure:failureBlock scene:scene loginUrl:loginUrl];
+- (BOOL)loginWithCompletion:(SFUserAccountManagerSuccessCallbackBlock)completionBlock failure:(SFUserAccountManagerFailureCallbackBlock)failureBlock scene:(UIScene *)scene {
+    return [self authenticateWithCompletion:completionBlock failure:failureBlock scene:scene];
 }
 
 - (BOOL)refreshCredentials:(SFOAuthCredentials *)credentials completion:(SFUserAccountManagerSuccessCallbackBlock)completionBlock failure:(SFUserAccountManagerFailureCallbackBlock)failureBlock {
@@ -429,10 +426,7 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     }
 }
 
-- (BOOL)authenticateWithCompletion:(SFUserAccountManagerSuccessCallbackBlock)completionBlock 
-                           failure:(SFUserAccountManagerFailureCallbackBlock)failureBlock 
-                             scene:(UIScene *)scene 
-                          loginUrl:(nullable NSURL *)loginUrl {
+- (BOOL)authenticateWithCompletion:(SFUserAccountManagerSuccessCallbackBlock)completionBlock failure:(SFUserAccountManagerFailureCallbackBlock)failureBlock scene:(UIScene *)scene {
     SFSDKAuthSession *authSession = self.authSessions[scene.session.persistentIdentifier];
     if (authSession && authSession.isAuthenticating) {
         [SFSDKCoreLogger e:[self class] format:@"Login has already been called. Stop current authentication using SFUserAccountManager::stopCurrentAuthentication and then retry."];
@@ -447,7 +441,7 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     if (request.idpEnabled) {
        return [self authenticateUsingIDP:request completion:completionBlock failure:failureBlock];
     }
-    return [self authenticateWithRequest:request loginUrl:loginUrl completion:completionBlock failure:failureBlock];
+    return [self authenticateWithRequest:request completion:completionBlock failure:failureBlock];
 }
 
 -(SFSDKAuthRequest *)defaultAuthRequest {
@@ -468,16 +462,12 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     return request;
 }
 
-- (BOOL)authenticateWithRequest:(SFSDKAuthRequest *)request 
-                       loginUrl:(nullable NSURL *)loginUrl
-                     completion:(SFUserAccountManagerSuccessCallbackBlock)completionBlock 
-                        failure:(SFUserAccountManagerFailureCallbackBlock)failureBlock {
+- (BOOL)authenticateWithRequest:(SFSDKAuthRequest *)request completion:(SFUserAccountManagerSuccessCallbackBlock)completionBlock failure:(SFUserAccountManagerFailureCallbackBlock)failureBlock {
     SFSDKAuthSession *authSession = [[SFSDKAuthSession alloc] initWith:request credentials:nil];
     authSession.isAuthenticating = YES;
     authSession.authFailureCallback = failureBlock;
     authSession.authSuccessCallback = completionBlock;
     authSession.oauthCoordinator.delegate = self;
-    authSession.oauthCoordinator.loginUrl = loginUrl;
     NSString *sceneId = authSession.sceneId;
     self.authSessions[sceneId] = authSession;
     dispatch_async(dispatch_get_main_queue(), ^{
