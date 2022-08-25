@@ -40,42 +40,29 @@
 
 @implementation SFSDKAuthHelper
 
-+ (void)loginIfRequired:(nullable NSURL *)loginUrl completion:(void (^)(void))completionBlock {
++ (void)loginIfRequired:(void (^)(void))completionBlock {
     UIScene *scene = [[SFSDKWindowManager sharedManager] defaultScene];
-    [SFSDKAuthHelper loginIfRequired:scene loginUrl:loginUrl fromLogout:NO completion:completionBlock];
+    [SFSDKAuthHelper loginIfRequired:scene completion:completionBlock];
 }
 
-+ (void)loginIfRequired:(UIScene *)scene 
-               loginUrl:(nullable NSURL *)loginUrl 
-             fromLogout:(BOOL)fromLogout 
-             completion:(void (^)(void))completionBlock {
-    // If fromLogout is YES, the call is from logout flow 
-    // and the block is a logout block, so we execute it now.
-    if (fromLogout) {
++ (void)loginIfRequired:(UIScene *)scene completion:(void (^)(void))completionBlock {
+    [SFSDKAuthHelper registerBlockForLoginNotification:^{
         if (completionBlock) {
             completionBlock();
         }
-    } else {
-        [SFSDKAuthHelper registerBlockForLoginNotification:^{
-            if (completionBlock) {
-                completionBlock();
-            }
-        }];
-    }
+    }];
 
     if (![SFUserAccountManager sharedInstance].currentUser && [SalesforceSDKManager sharedManager].appConfig.shouldAuthenticate) {
         SFUserAccountManagerFailureCallbackBlock failureBlock = ^(SFOAuthInfo *authInfo, NSError *authError) {
             [SFSDKCoreLogger e:[self class] format:@"Authentication failed: %@.", [authError localizedDescription]];
         };
-        BOOL result = [[SFUserAccountManager sharedInstance] loginWithCompletion:nil failure:failureBlock scene:scene loginUrl:loginUrl];
+        BOOL result = [[SFUserAccountManager sharedInstance] loginWithCompletion:nil failure:failureBlock scene:scene];
         if (!result) {
             [[SFUserAccountManager sharedInstance] stopCurrentAuthentication:^(BOOL result) {
-                [[SFUserAccountManager sharedInstance] loginWithCompletion:nil failure:failureBlock scene:scene loginUrl:loginUrl];
+                [[SFUserAccountManager sharedInstance] loginWithCompletion:nil failure:failureBlock scene:scene];
             }];
         }
-    } else if (!fromLogout) {
-      // If the flow is after logout, it should either lead to SwitchUser or New Login.
-      // If the flow is from login, and there is a current user, then it should go to Screen Lock page.
+    } else {
         [self screenLockValidation:completionBlock];
     }
 }
@@ -136,7 +123,7 @@
                 completionBlock();
             }
         } else {
-            [self loginIfRequired:scene loginUrl:nil fromLogout:YES completion:completionBlock];
+            [self loginIfRequired:scene completion:completionBlock];
         }
     }
 }

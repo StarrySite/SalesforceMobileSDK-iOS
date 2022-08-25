@@ -35,25 +35,19 @@ NS_SWIFT_NAME(AuthHelper)
 /**
  Initiate a login flow if the user is not already logged in to Salesforce and if the app config's `shouldAuthenticate` flag is set to false.
  
- @param loginUrl When host app can use this param to start login with a specific URL.
  @param completionBlock Block that executes immediately if the user is already logged in, or if the app config's `shouldAuthenticate` is set to false.
                         Otherwise, this block executes after the user logs in successfully, if login is required.
  */
-+ (void)loginIfRequired:(nullable NSURL *)loginUrl completion:(nullable void (^)(void))completionBlock;
++ (void)loginIfRequired:(nullable void (^)(void))completionBlock;
 
 /**
  Initiate a login flow if the user is not already logged in to Salesforce and if the app config's `shouldAuthenticate` flag is set to false.
  
  @param scene Scene that login is initiated for.
- @param loginUrl When host app can use this param to start login with a specific URL.
- @param fromLogout To distinguish when this method is called after user logout for showing login screen.
  @param completionBlock Block that executes immediately if the user is already logged in, or if the app config's `shouldAuthenticate` is set to false.
                         Otherwise, this block executes after the user logs in successfully, if login is required.
  */
-+ (void)loginIfRequired:(UIScene *)scene
-               loginUrl:(nullable NSURL *)loginUrl
-             fromLogout:(BOOL)fromLogout
-             completion:(nullable void (^)(void))completionBlock;
++ (void)loginIfRequired:(UIScene *)scene completion:(nullable void (^)(void))completionBlock;
 
 + (void)handleLogout:(nullable void (^)(void))completionBlock;
 
