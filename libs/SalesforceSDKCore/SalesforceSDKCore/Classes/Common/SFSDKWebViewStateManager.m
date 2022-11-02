@@ -119,7 +119,7 @@ static BOOL _sessionCookieManagementDisabled = NO;
 }
 
 + (NSArray<NSString *> *) domains {
-    return @[@".salesforce.com", @".force.com", @".cloudforce.com"];
+    return @[@".salesforce.com", @".force.com", @".cloudforce.com", @".site.com"];
 }
 
 + (void)resetSessionCookie
