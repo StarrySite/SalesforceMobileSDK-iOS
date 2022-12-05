@@ -1561,13 +1561,14 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
        hasMobilePolicy:(BOOL)hasMobilePolicy
            lockTimeout:(int)lockTimeout
 {
-    [[SFScreenLockManager shared] storeMobilePolicyWithUserAccount:self.currentUser hasMobilePolicy:hasMobilePolicy lockTimeout:lockTimeout];
+  if (hasMobilePolicy == YES) {
     __weak typeof(self) weakSelf = self;
     [[SFScreenLockManager shared] setCallbackBlockWithScreenLockCallbackBlock:^{
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        [strongSelf finalizeAuthCompletionForCallbacksAndNotification:authSession];
+      __strong typeof(weakSelf) strongSelf = weakSelf;
+      [strongSelf finalizeAuthCompletionForCallbacksAndNotification:authSession];
     }];
-    [[SFScreenLockManager shared] handleAppForeground];
+  }
+  [[SFScreenLockManager shared] storeMobilePolicyWithUserAccount:self.currentUser hasMobilePolicy:hasMobilePolicy lockTimeout:lockTimeout];
 }
 
 - (void)handleFailure:(NSError *)error session:(SFSDKAuthSession *)authSession {
