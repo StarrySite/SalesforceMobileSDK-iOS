@@ -1,9 +1,9 @@
 //
-//  SFScreenLock.swift
+//  ScreenLockManager.swift
 //  SalesforceSDKCore
 //
-//  Created by Brandon Page on 9/9/21.
-//  Copyright (c) 2021-present, salesforce.com, inc. All rights reserved.
+//  Created by Brandon Page on 4/24/23.
+//  Copyright (c) 2023-present, salesforce.com, inc. All rights reserved.
 // 
 //  Redistribution and use of this software in source and binary forms, with or without modification,
 //  are permitted provided that the following conditions are met:
@@ -32,6 +32,7 @@ import SwiftUI
 public typealias ScreenLockCallbackBlock = () -> Void
 
 @objc(SFScreenLockManager)
+
 public class ScreenLockManager: NSObject {
     @objc public static let shared = ScreenLockManager()
     
@@ -98,15 +99,7 @@ public class ScreenLockManager: NSObject {
             writeGlobalPolicy(hasPolicyData)
         }
     }
-    
-    /// Stores the callback block to be run upon screen unlock
-    ///
-    /// - Parameters:
-    ///   -  screenLockCallbackBlock: The block to be run upon unlock
-    @objc public func setCallbackBlock(screenLockCallbackBlock: @escaping ScreenLockCallbackBlock) {
-        callbackBlock = screenLockCallbackBlock
-    }
-    
+
     /// Checks all users for Screen Lock policy and removes global policy if none are found.
     @objc public func checkForScreenLockUsers() {
         guard readMobilePolicy() != nil else {
@@ -265,5 +258,5 @@ public class ScreenLockManager: NSObject {
         let hasPolicy: Bool
         let timeout: Int32
     }
-}
 
+}
