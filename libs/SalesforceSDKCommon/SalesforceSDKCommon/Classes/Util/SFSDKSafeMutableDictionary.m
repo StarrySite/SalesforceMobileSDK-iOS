@@ -100,7 +100,9 @@
 
 - (void)removeObject:(id<NSCopying>)aKey {
     dispatch_barrier_async(self.queue, ^{
-        [self.backingDictionary removeObjectForKey:aKey];
+        if (aKey != nil) {
+            [self.backingDictionary removeObjectForKey:aKey];
+        }
     });
 }
 

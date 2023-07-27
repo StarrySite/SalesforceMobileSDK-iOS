@@ -1694,6 +1694,20 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     [self dismissAuthViewControllerIfPresent];
 }
 
+- (void)checkBiometric:(SFSDKAuthSession *)authSession
+       hasMobilePolicy:(BOOL)hasMobilePolicy
+           lockTimeout:(int)lockTimeout
+{
+  if (hasMobilePolicy == YES) {
+    __weak typeof(self) weakSelf = self;
+    [[SFScreenLockManager shared] setCallbackBlockWithScreenLockCallbackBlock:^{
+      __strong typeof(weakSelf) strongSelf = weakSelf;
+      [strongSelf finalizeAuthCompletionForCallbacksAndNotification:authSession];
+    }];
+  }
+  [[SFScreenLockManager shared] storeMobilePolicyWithUserAccount:self.currentUser hasMobilePolicy:hasMobilePolicy lockTimeout:lockTimeout];
+}
+
 - (void)handleFailure:(NSError *)error session:(SFSDKAuthSession *)authSession {
     if (authSession.authFailureCallback) {
         authSession.authFailureCallback(authSession.authInfo, error);
@@ -1755,7 +1769,7 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     [_accountsLock unlock];
 }
 
-- (void)finalizeAuthCompletion:(SFSDKAuthSession *)authSession {
+- (void)finalizeAuthCompletionForUserAccount:(SFSDKAuthSession *)authSession {
     // Apply the credentials that will ensure there is a user and that this
     // current user as the proper credentials.
     SFUserAccount *userAccount = [self applyCredentials:authSession.oauthCoordinator.credentials withIdData:authSession.identityCoordinator.idData];
@@ -1780,21 +1794,22 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     
     // Async call, ignore if theres a failure. If success save the user photo locally.
     [self retrieveUserPhotoIfNeeded:userAccount];
-    BOOL shouldNotify = YES;
     
     if (self.currentUser == nil || !authSession.oauthRequest.authenticateRequestFromSPApp) {
         [self setCurrentUserInternal:userAccount];
     }
+}
 
-    shouldNotify = authSession.oauthRequest.authenticateRequestFromSPApp?(authSession.oauthRequest.authenticateRequestFromSPApp && self.currentUser == nil):YES;
+- (void)finalizeAuthCompletionForCallbacksAndNotification:(SFSDKAuthSession *)authSession {
+    BOOL shouldNotify = authSession.oauthRequest.authenticateRequestFromSPApp?(authSession.oauthRequest.authenticateRequestFromSPApp && self.currentUser == nil):YES;
     SFOAuthInfo *authInfo = authSession.authInfo;
     
     if (authSession.authSuccessCallback) {
-        authSession.authSuccessCallback(authSession.authInfo, userAccount);
+        authSession.authSuccessCallback(authSession.authInfo, self.currentUser);
     }
     //notify for all login flows except during an SP apps login request.
     if (shouldNotify) {
-        [self notifyLoginCompletion:userAccount authInfo:authInfo];
+        [self notifyLoginCompletion:self.currentUser authInfo:authInfo];
     }
     
     if (!authSession.oauthRequest.authenticateRequestFromSPApp) {
