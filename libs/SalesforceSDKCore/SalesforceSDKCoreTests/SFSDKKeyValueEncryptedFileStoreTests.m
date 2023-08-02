@@ -29,6 +29,7 @@
 #import <SalesforceSDKCore/SFUserAccount.h>
 #import <SalesforceSDKCore/SFOAuthCredentials.h>
 #import <SalesforceSDKCore/SFDirectoryManager.h>
+#import <SalesforceSDKCore/SFEncryptionKey.h>
 #import <SalesforceSDKCore/SalesforceSDKCore-Swift.h>
 
 @interface SFOAuthCredentials ()
@@ -204,7 +205,7 @@
 }
 
 - (void)testBadDirectory {
-    SFSDKKeyValueEncryptedFileStore *store = [[SFSDKKeyValueEncryptedFileStore alloc] initWithParentDirectory:@"" name:@"test_bad_directory"];
+    SFSDKKeyValueEncryptedFileStore *store = [[SFSDKKeyValueEncryptedFileStore alloc] initWithParentDirectory:@"" name:@"test_bad_directory" encryptionKey:[SFEncryptionKey createKey]];
     XCTAssertNil(store);
 }
 
@@ -380,7 +381,7 @@
 
 - (SFSDKKeyValueEncryptedFileStore *)createStoreWithName:(NSString *)name {
     NSString *parentDirectory = [self globalPath];
-    return [[SFSDKKeyValueEncryptedFileStore alloc] initWithParentDirectory:parentDirectory name:name];
+    return [[SFSDKKeyValueEncryptedFileStore alloc] initWithParentDirectory:parentDirectory name:name encryptionKey:[SFEncryptionKey createKey]];
 }
 
 - (SFSDKKeyValueEncryptedFileStore *)createV1StoreWithName:(NSString *)name {

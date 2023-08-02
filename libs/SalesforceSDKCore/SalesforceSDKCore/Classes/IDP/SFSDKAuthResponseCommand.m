@@ -1,5 +1,5 @@
 /*
- SFSDKAuthRequestCommand.m
+ SFSDKAuthResponseCommand.h
  SalesforceSDKCore
 
  Created by Raj Rao on 9/28/17.
@@ -26,78 +26,38 @@
  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#import "SFSDKSPLoginRequestCommand.h"
+#import "SFSDKAuthResponseCommand.h"
 #import "SFSDKIDPConstants.h"
 #import "SFSDKAuthCommand+Internal.h"
-@implementation SFSDKSPLoginRequestCommand
 
-- (NSString *)spState {
+@implementation SFSDKAuthResponseCommand
+
+- (NSString *)state {
     return [self paramForKey:kSFStateParam];
 }
 
-- (void)setSpState:(NSString *)spState {
-    [self setParamForKey:spState key:kSFStateParam];
+- (void)setState:(NSString *)state {
+    [self setParamForKey:state key:kSFStateParam];
 }
 
-- (NSString *)spClientId {
-    return [self paramForKey:kSFOAuthClientIdParam];
+- (NSString *)authCode {
+    return [self paramForKey:kSFCodeParam];
 }
 
-- (void)setSpClientId:(NSString *)spClientId {
-    [self setParamForKey:spClientId key:kSFOAuthClientIdParam];
+- (void)setAuthCode:(NSString *)authCode {
+    [self setParamForKey:authCode key:kSFCodeParam];
 }
 
-- (NSString *)spRedirectURI {
-    return [self paramForKey:kSFOAuthRedirectUrlParam];
-}
-
-- (void)setSpRedirectURI:(NSString *)spRedirectURI {
-    [self setParamForKey:spRedirectURI key:kSFOAuthRedirectUrlParam];
-}
-
-- (NSString *)spCodeChallenge {
-    return [self paramForKey:kSFChallengeParamName];
-}
-
-- (void)setSpCodeChallenge:(NSString *)spCodeChallenge {
-    [self setParamForKey:spCodeChallenge key:kSFChallengeParamName];
-}
-
-- (NSString *)spUserHint {
-    return [self paramForKey:kSFUserHintParam];
-}
-
-- (void)setSpUserHint:(NSString *)spUserHint {
-    [self setParamForKey:spUserHint key:kSFUserHintParam];
-}
-
-- (NSString *)spAppName {
-    return [self paramForKey:kSFAppNameParam];
-}
-
-- (void)setSpAppName:(NSString *)spAppName {
-    [self setParamForKey:spAppName key:kSFAppNameParam];
-}
-
-- (NSString *)spLoginHost {
+- (NSString *)domain {
     return [self paramForKey:kSFLoginHostParam];
 }
 
-- (void)setSpLoginHost:(NSString *)spLoginHost {
-    [self setParamForKey:spLoginHost key:kSFLoginHostParam];
-}
-
-- (NSString *)spAppScopes {
-    return [self paramForKey:kSFScopesParam];
-}
-
-- (void)setSpAppScopes:(NSString *)spAppScopes {
-    [self setParamForKey:spAppScopes key:kSFScopesParam];
+- (void)setDomain:(NSString *)domain {
+    [self setParamForKey:domain key:kSFLoginHostParam];
 }
 
 - (NSString *)command {
-    return @"authrequest";
+    return @"authresponse";
 }
-
 
 @end

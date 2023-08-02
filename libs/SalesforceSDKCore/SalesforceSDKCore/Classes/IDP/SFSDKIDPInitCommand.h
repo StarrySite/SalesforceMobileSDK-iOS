@@ -29,10 +29,9 @@
 
 #import "SFSDKAuthCommand.h"
 
-// Sent by IDP to SP for IDP initiated login flow
-@interface SFSDKIDPLoginRequestCommand : SFSDKAuthCommand
-@property (nonatomic, copy) NSString *userHint;
-@property (nonatomic, copy) NSString *domain;
-@property (nonatomic, copy) NSString *startURL;
+@interface SFSDKIDPInitCommand : SFSDKAuthCommand
+@property (nonatomic,copy) NSString *userHint;
+@property (nonatomic,copy) NSString *domain;
+@property (nonatomic,copy) NSString *startURL;
 
 @end

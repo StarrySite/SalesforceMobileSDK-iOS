@@ -31,8 +31,6 @@
 #import "SFSDKAuthPreferences.h"
 #import "SFUserAccountManager+URLHandlers.h"
 #import "NSURL+SFAdditions.h"
-#import "SFSDKIDPAuthCodeLoginRequestCommand.h"
-
 @implementation SFSDKAdvancedAuthURLHandler
 
 - (BOOL)canHandleRequest:(NSURL *)url options:(NSDictionary *)options {
@@ -42,13 +40,13 @@
    
     // Not IDP enabled but Auth Code is present represents an Advanced Auth Flow situations. Ensure that we are not looking at any errors in either case.
     return (!preferences.idpEnabled &&
-            ![[SFSDKIDPAuthCodeLoginRequestCommand new] isAuthCommand: url] &&
-            codeRange.location != NSNotFound &&
-            rangeErrorReason.location == NSNotFound);
+            codeRange.location!=NSNotFound &&
+            rangeErrorReason.location==NSNotFound);
 }
 
 - (BOOL)processRequest:(NSURL *)url options:(NSDictionary *)options {
     return [[SFUserAccountManager sharedInstance] handleAdvancedAuthURL:url options:options];
 }
+
 
 @end

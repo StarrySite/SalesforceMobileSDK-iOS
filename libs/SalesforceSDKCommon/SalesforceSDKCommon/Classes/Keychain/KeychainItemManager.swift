@@ -34,34 +34,21 @@ internal class KeychainItemManager: NSObject {
 
     let accessibleAttribute: CFString
     
-    /// Initializer for kSecClassGenericPassword. Will create a keychain item manager
+    /// Initializer for kSecClassGenericPassword with accessgroup. Will create a keychain item manager
     /// for kSecClassGenericPassword operations
-    /// - Parameters:
-    ///   - service: Service name for keychain item
-    ///   - account: Account name for keychain item
     convenience init(service: String, account: String?) {
         self.init(service: service, account: account, accessibilityAttribute: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
     }
 
-    /// Initializer for kSecClassGenericPassword. Will create a keychain item manager
+    /// Initializer for kSecClassGenericPassword with accessgroup. Will create a keychain item manager
     /// - Parameters:
     ///   - service: Service name for keychain item
     ///   - account: Account name for keychain item
-    ///   - accessibilityAttribute: kSecAttrAccessible attribute for keychain
-    convenience init(service: String, account: String?, accessibilityAttribute: CFString) {
-        self.init(service: service, account: account, accessibilityAttribute: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly, accessGroup: nil)
-    }
-    
-    /// Initializer for kSecClassGenericPassword
-    /// - Parameters:
-    ///   - service: Service name for keychain item
-    ///   - account: Account name for keychain item
-    ///   - accessibilityAttribute: kSecAttrAccessible attribute for keychain
-    ///   - accessGroup: kSecAttrAccessGroup attribute for keychain
-    init(service: String, account: String?, accessibilityAttribute: CFString, accessGroup: String?) {
+    ///   - accessibilityAttribute: kSecAttrAccessible Attribute for keychain
+    init(service: String, account: String?, accessibilityAttribute: CFString) {
         self.secureStoreQueryable = GenericPasswordItemQuery(service: service,
                                                              account: account,
-                                                             accessGroup: accessGroup)
+                                                             accessGroup: nil)
         self.accessibleAttribute = accessibilityAttribute
     }
 

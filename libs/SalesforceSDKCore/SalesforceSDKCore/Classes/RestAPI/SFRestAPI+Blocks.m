@@ -63,32 +63,15 @@ static char SuccessBlockKey;
 
 - (void) sendCompositeRequest:(SFSDKCompositeRequest *)request failureBlock:(SFRestRequestFailBlock)failureBlock successBlock:(SFRestCompositeResponseBlock)successBlock {
     [self sendRequest:request failureBlock:failureBlock successBlock:^(id response, NSURLResponse * rawResponse) {
-        @try {
-            SFSDKCompositeResponse *compositeResponse = [[SFSDKCompositeResponse alloc] initWith:response];
-            successBlock(compositeResponse, rawResponse);
-        } @catch (NSException *exception) {
-            NSDictionary *userInfo = @{ @"Exception": exception.name, @"NSDebugDescription": exception.reason };
-            NSError *error = [[NSError alloc] initWithDomain: kSFRestErrorDomain
-                                                        code: kSFRestErrorCode
-                                                    userInfo:userInfo];
-            failureBlock(response, error, rawResponse);
-        }
+        SFSDKCompositeResponse *compositeResponse = [[SFSDKCompositeResponse alloc] initWith:response];
+        successBlock(compositeResponse, rawResponse);
     }];
 }
 
 - (void) sendBatchRequest:(SFSDKBatchRequest *)request failureBlock:(SFRestRequestFailBlock)failureBlock successBlock:(SFRestBatchResponseBlock)successBlock {
     [self sendRequest:request failureBlock:failureBlock successBlock:^(id response, NSURLResponse * rawResponse) {
-        @try {
-            SFSDKBatchResponse *compositeResponse = [[SFSDKBatchResponse alloc] initWith:response];
-            successBlock(compositeResponse, rawResponse);
-        } @catch (NSException *exception) {
-            
-            NSDictionary *userInfo = @{ @"Exception": exception.name, @"NSDebugDescription": exception.reason };
-            NSError *error = [[NSError alloc] initWithDomain: kSFRestErrorDomain
-                                                        code: kSFRestErrorCode
-                                                    userInfo:userInfo];
-            failureBlock(response, error, rawResponse);
-        }
+        SFSDKBatchResponse *compositeResponse = [[SFSDKBatchResponse alloc] initWith:response];
+        successBlock(compositeResponse, rawResponse);
     }];
 }
 

@@ -26,7 +26,6 @@
 
 static NSString * const kAuthConfigMobileSDKKey        = @"MobileSDK";
 static NSString * const kAuthConfigUseNativeBrowserKey = @"UseiOSNativeBrowserForAuthentication";
-static NSString * const kAuthConfigShareBrowserSession = @"shareBrowserSessionIOS";
 static NSString * const kAuthConfigSamlProvidersKey    = @"SamlProviders";
 static NSString * const kAuthConfigAuthProvidersKey    = @"AuthProviders";
 static NSString * const kAuthConfigSSOUrlKey           = @"SsoUrl";
@@ -53,15 +52,6 @@ static NSString * const kAuthConfigLoginPageUrlKey     = @"LoginPageUrl";
 
 - (BOOL)useNativeBrowserForAuth {
     return [self.authConfigDict[kAuthConfigMobileSDKKey][kAuthConfigUseNativeBrowserKey] boolValue];
-}
-
-- (BOOL)shareBrowserSession {
-    if ([self.authConfigDict[kAuthConfigMobileSDKKey] objectForKey:kAuthConfigShareBrowserSession] != nil) {
-        return [self.authConfigDict[kAuthConfigMobileSDKKey][kAuthConfigShareBrowserSession] boolValue];
-    } else {
-        // return false which means prompt=login being appended to login url
-        return false;
-    }
 }
 
 - (NSArray<NSString *> *)ssoUrls {

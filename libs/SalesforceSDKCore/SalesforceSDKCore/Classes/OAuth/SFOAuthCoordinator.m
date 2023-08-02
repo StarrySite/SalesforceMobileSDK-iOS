@@ -47,13 +47,8 @@
 #import <SalesforceSDKCommon/SFJsonUtils.h>
 #import "SFSDKOAuth2+Internal.h"
 #import "SFSDKOAuthConstants.h"
-#import "SFSDKIDPConstants.h"
 #import "SFSDKAuthSession.h"
 #import "SFSDKAuthRequest.h"
-#import <SalesforceSDKCommon/SalesforceSDKCommon-Swift.h>
-#import <SalesforceSDKCommon/SFSDKDatasharingHelper.h>
-#import <SalesforceSDKCore/SalesforceSDKCore-Swift.h>
-#import <LocalAuthentication/LocalAuthentication.h>
 @interface SFOAuthCoordinator()
 
 @property (nonatomic) NSString *networkIdentifier;
@@ -159,7 +154,7 @@
     if (self.credentials.refreshToken) {
         // clear any access token we may have and begin refresh flow
         [self notifyDelegateOfBeginAuthentication];
-        [self beginTokenEndpointFlow];
+        [self beginTokenEndpointFlow:SFOAuthTokenEndpointFlowRefresh];
     } else if (self.credentials.jwt) {
         // JWT token existence means we're doing JWT token exchange.
         self.authInfo = [[SFOAuthInfo alloc] initWithAuthType:SFOAuthTypeJwtTokenExchange];
@@ -173,7 +168,7 @@
                 __strong typeof(weakSelf) strongSelf = weakSelf;
                 strongSelf.authInfo = [[SFOAuthInfo alloc] initWithAuthType:SFOAuthTypeAdvancedBrowser];
                 [strongSelf notifyDelegateOfBeginAuthentication];
-                [strongSelf beginNativeBrowserFlowWithSharedBrowserSessionEnabled:false];
+                [strongSelf beginNativeBrowserFlow];
             });
         } else {
             [SFSDKAuthConfigUtil getMyDomainAuthConfig:^(SFOAuthOrgAuthConfiguration *authConfig, NSError *error) {
@@ -182,14 +177,14 @@
                     // Ignore any errors why retrieving authconfig. Default to WKWebView
                     // Errors should have already been logged.
                     if (authConfig.useNativeBrowserForAuth) {
-                        [SFSDKAppFeatureMarkers registerAppFeature:kSFAppFeatureSafariBrowserForLogin];
+                         [SFSDKAppFeatureMarkers registerAppFeature:kSFAppFeatureSafariBrowserForLogin];
                         strongSelf.authInfo = [[SFOAuthInfo alloc] initWithAuthType:SFOAuthTypeAdvancedBrowser];
                         [strongSelf notifyDelegateOfBeginAuthentication];
-                        [strongSelf beginNativeBrowserFlowWithSharedBrowserSessionEnabled:authConfig.shareBrowserSession];
+                        [strongSelf beginNativeBrowserFlow];
                     } else {
                         [SFSDKAppFeatureMarkers unregisterAppFeature:kSFAppFeatureSafariBrowserForLogin];
                         [strongSelf notifyDelegateOfBeginAuthentication];
-                        [strongSelf beginWebViewFlow];
+                        [strongSelf beginUserAgentFlow];
                     }
                 });
             } loginDomain:self.credentials.domain];
@@ -236,51 +231,19 @@
         return NO;
     }
     self.approvalCode = codeVal;
-    
-    NSString *keychainReference = [appUrlResponse valueForParameterName:kSFKeychainReferenceParam];
-    if (keychainReference) { // IDP -> SP auth
-        NSString *keychainGroup = [appUrlResponse valueForParameterName:kSFKeychainGroupParam];
-        SFSDKKeychainResult *result = [SFSDKKeychainHelper readWithService:keychainReference account:nil accessGroup:keychainGroup cacheMode:CacheModeDisabled];
-        NSString *codeVerifier = [result.data msdkBase64UrlString];
-        if (!codeVerifier || result.error) {
-            [SFSDKCoreLogger e:[self class] format:@"URL has keychain group parameter but unable to retrieve value from the keychain: %@", result.error];
-            return NO;
-        } else {
-            self.codeVerifier = codeVerifier;
-        }
-    }
-
     [SFSDKCoreLogger i:[self class] format:@"%@ Received advanced authentication response.  Beginning token exchange.", NSStringFromSelector(_cmd)];
     self.advancedAuthState = SFOAuthAdvancedAuthStateTokenRequestInitiated;
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self beginTokenEndpointFlow];
+        [self beginTokenEndpointFlow:SFOAuthTokenEndpointFlowAdvancedBrowser];
     });
     return YES;
 }
 
 - (BOOL)handleAdvancedAuthenticationResponse:(NSURL *)appUrlResponse {
-    self.authInfo = [[SFOAuthInfo alloc] initWithAuthType:SFOAuthTypeAdvancedBrowser];
-    BOOL success = [self handleWebServerResponse:appUrlResponse];
-    if (success) {
-        self.authInfo = [[SFOAuthInfo alloc] initWithAuthType:SFOAuthTypeAdvancedBrowser];
-    }
-    return success;
-}
-
-- (BOOL)handleWebServerResponse:(NSURL *)appUrlResponse {
+     self.authInfo = [[SFOAuthInfo alloc] initWithAuthType:SFOAuthTypeAdvancedBrowser];
     NSString *appUrlResponseString = [appUrlResponse absoluteString];
     if (![[appUrlResponseString lowercaseString] hasPrefix:[self.credentials.redirectUri lowercaseString]]) {
         [SFSDKCoreLogger i:[self class] format:@"%@ URL does not match redirect URI.", NSStringFromSelector(_cmd)];
-        
-        if ([self isBiometricPromptURL:appUrlResponseString]) {
-            [SFSDKCoreLogger i:[self class] format:@"Caught biometric request scheme.  Showing native biometric promp."];
-            
-            SFBiometricAuthenticationManagerInternal *bioAuthManager = [SFBiometricAuthenticationManagerInternal shared];
-            if (bioAuthManager.locked && bioAuthManager.hasBiometricOptedIn) {
-                [bioAuthManager presentBiometricWithScene:self.view.window.windowScene];
-            }
-        }
-        
         return NO;
     }
     NSString *query = [appUrlResponse query];
@@ -295,9 +258,10 @@
         return NO;
     }
     self.approvalCode = codeVal;
-    [SFSDKCoreLogger i:[self class] format:@"%@ Received web server response.  Beginning token exchange.", NSStringFromSelector(_cmd)];
+    [SFSDKCoreLogger i:[self class] format:@"%@ Received advanced authentication response.  Beginning token exchange.", NSStringFromSelector(_cmd)];
+    self.advancedAuthState = SFOAuthAdvancedAuthStateTokenRequestInitiated;
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self beginTokenEndpointFlow];
+        [self beginTokenEndpointFlow:SFOAuthTokenEndpointFlowAdvancedBrowser];
     });
     return YES;
 }
@@ -354,38 +318,51 @@
     }
 }
 
-- (void)beginNativeBrowserFlowWithSharedBrowserSessionEnabled:(BOOL)shareBrowserSession {
+- (void)beginNativeBrowserFlow {
     if ([self.delegate respondsToSelector:@selector(oauthCoordinator:willBeginBrowserAuthentication:)]) {
         __weak typeof(self) weakSelf = self;
         [self.delegate oauthCoordinator:self willBeginBrowserAuthentication:^(BOOL proceed) {
             if (proceed) {
-                [weakSelf continueNativeBrowserFlowWithSharedBrowserSessionEnabled:shareBrowserSession];
+                [weakSelf continueNativeBrowserFlow];
             }
         }];
     } else {
         // If delegate does not implement the method, simply continue with the browser flow.
-        [self continueNativeBrowserFlowWithSharedBrowserSessionEnabled:shareBrowserSession];
+        [self continueNativeBrowserFlow];
     }
 }
 
-- (void)continueNativeBrowserFlowWithSharedBrowserSessionEnabled:(BOOL)shareBrowserSession {
+- (void)continueNativeBrowserFlow {
     if (![NSThread isMainThread]) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self continueNativeBrowserFlowWithSharedBrowserSessionEnabled:shareBrowserSession];
+            [self continueNativeBrowserFlow];
         });
         return;
     }
-    NSString *approvalUrl = [self approvalURLForEndpoint:[self brandedAuthorizeURL]
-                                             credentials:self.credentials
-                                           webServerFlow:YES
-                                                protocol:nil
-                                                  domain:nil
-                                           codeChallenge:nil];
-    approvalUrl = [NSString stringWithFormat:@"%@&state=%@", approvalUrl, self.credentials.identifier];
     
-    if (!shareBrowserSession) {
-        approvalUrl = [NSString stringWithFormat:@"%@&prompt=login", approvalUrl];
+    // E.g. https://login.salesforce.com/services/oauth2/authorize
+    //      ?client_id=<Connected App ID>&redirect_uri=<Connected App Redirect URI>&display=touch
+    //      &response_type=code
+    NSMutableString *approvalUrl = [[NSMutableString alloc] initWithFormat:@"%@://%@%@?%@=%@&%@=%@&%@=%@&%@=%@&state=%@",
+                                    self.credentials.protocol, self.credentials.domain, [self brandedAuthorizeURL],
+                                    kSFOAuthClientId, self.credentials.clientId,
+                                    kSFOAuthRedirectUri, self.credentials.redirectUri,
+                                    kSFOAuthDisplay, kSFOAuthDisplayTouch,
+                                    kSFOAuthResponseType, kSFOAuthResponseTypeCode,self.credentials.identifier];
+    
+    // OAuth scopes
+    NSString *scopeString = [self scopeQueryParamString];
+    if (scopeString != nil) {
+        [approvalUrl appendString:scopeString];
     }
+    
+    // Code verifier challenge:
+    //   - self.codeVerifier is a base64url-encoded random data string
+    //   - The code challenge sent here is an SHA-256 hash of self.codeVerifier, also base64url-encoded
+    //   - Later, self.codeVerifier will be sent to the service, to be used to compare against the initial code challenge sent here.
+    self.codeVerifier = [[SFSDKCryptoUtils randomByteDataWithLength:kSFOAuthCodeVerifierByteLength] msdkBase64UrlString];
+    NSString *codeChallengeString = [[[self.codeVerifier dataUsingEncoding:NSUTF8StringEncoding] msdkSha256Data] msdkBase64UrlString];
+    [approvalUrl appendFormat:@"&%@=%@", kSFOAuthCodeChallengeParamName, codeChallengeString];
     
     // Launch the native browser.
     [SFSDKCoreLogger d:[self class] format:@"%@: Initiating native browser flow with URL %@", NSStringFromSelector(_cmd), approvalUrl];
@@ -396,7 +373,7 @@
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!error && [[SFSDKURLHandlerManager sharedInstance] canHandleRequest:callbackURL options:nil]) {
             NSDictionary *options = @{kSFIDPSceneIdKey : self.authSession.sceneId};
-            [[SFSDKURLHandlerManager sharedInstance] processRequest:callbackURL options:options completion:nil failure:nil];
+            [[SFSDKURLHandlerManager sharedInstance] processRequest:callbackURL options:options];
         } else {
             [strongSelf.delegate oauthCoordinatorDidCancelBrowserAuthentication:strongSelf];
         }
@@ -405,10 +382,10 @@
     [self.delegate oauthCoordinator:self didBeginAuthenticationWithSession:_asWebAuthenticationSession];
 }
 
-- (void)beginWebViewFlow {
+- (void)beginUserAgentFlow {
     if (![NSThread isMainThread]) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self beginWebViewFlow];
+            [self beginUserAgentFlow];
         });
         return;
     }
@@ -492,12 +469,9 @@
     // notify delegate will be begin authentication in our (web) vew
     if (self.credentials.accessToken && self.credentials.apiUrl) {
         NSString *baseUrlString = [self.credentials.apiUrl absoluteString];
-        NSString *approvalUrlString = [self approvalURLForEndpoint:kSFOAuthEndPointAuthorize
-                                                       credentials:self.spAppCredentials
-                                                     webServerFlow:YES
-                                                          protocol:@"https"
-                                                            domain:self.credentials.domain
-                                                     codeChallenge:self.spAppCredentials.challengeString];
+        NSString *approvalUrlString = [self generateCodeApprovalUrlString:self.spAppCredentials];
+        NSString *codeChallengeString = self.spAppCredentials.challengeString;
+        approvalUrlString = [NSString stringWithFormat:@"%@&%@=%@", approvalUrlString, kSFOAuthCodeChallengeParamName, codeChallengeString];
         NSString *escapedApprovalUrlString = [approvalUrlString stringByURLEncoding];
         NSString *frontDoorUrlString = [NSString stringWithFormat:@"%@/secur/frontdoor.jsp?sid=%@&retURL=%@", baseUrlString, self.credentials.accessToken, escapedApprovalUrlString];
         [self loadWebViewWithUrlString:frontDoorUrlString cookie:YES];
@@ -518,7 +492,7 @@
     [self.credentials updateCredentials:params];
 }
 
-- (void)beginTokenEndpointFlow {
+- (void)beginTokenEndpointFlow:(SFOAuthTokenEndpointFlow)flowType {
     self.responseData = [NSMutableData dataWithLength:512];
     SFSDKOAuthTokenEndpointRequest *request = [[SFSDKOAuthTokenEndpointRequest alloc] init];
     request.additionalOAuthParameterKeys = self.additionalOAuthParameterKeys;
@@ -533,7 +507,6 @@
         [SFSDKCoreLogger i:[self class] format:@"%@: Initiating authorization code flow.", NSStringFromSelector(_cmd)];
         request.approvalCode = self.approvalCode;
         request.codeVerifier = self.codeVerifier;
-
         [self.authClient accessTokenForApprovalCode:request completion:^(SFSDKOAuthTokenEndpointResponse * response) {
              __strong typeof (weakSelf) strongSelf = weakSelf;
             [strongSelf handleResponse:response];
@@ -663,60 +636,42 @@
 }
 
 - (NSString *)generateApprovalUrlString {
-    return [self approvalURLForEndpoint:[self brandedAuthorizeURL]
-                            credentials:self.credentials
-                          webServerFlow:[[SalesforceSDKManager sharedManager] useWebServerAuthentication]
-                               protocol:nil
-                                 domain:nil
-                          codeChallenge:nil];
+    return [self generateApprovalUrlString:self.credentials];
 }
 
-- (NSString *)approvalURLForEndpoint:(NSString *)authorizeEndpoint
-                         credentials:(SFOAuthCredentials *)credentials
-                       webServerFlow:(BOOL)webServerFlow
-                            protocol:(nullable NSString *)protocol
-                              domain:(nullable NSString *)domain
-                       codeChallenge:(nullable NSString *)codeChallenge {
-    if (!protocol) {
-        protocol = credentials.protocol;
-    }
-    if (!domain) {
-        domain = credentials.domain;
-    }
-    
-    NSAssert(nil != domain, @"domain is required");
+- (NSString *)generateApprovalUrlString:(SFOAuthCredentials *)credentials {
+    NSAssert(nil != credentials.domain, @"credentials.domain is required");
     NSAssert(nil != credentials.clientId, @"credentials.clientId is required");
     NSAssert(nil != credentials.redirectUri, @"credentials.redirectUri is required");
-
-    // E.g. https://login.salesforce.com/services/oauth2/authorize
-    //      ?client_id=<Connected App ID>&redirect_uri=<Connected App Redirect URI>&display=touch
-    //      &response_type=code
-    NSMutableString *approvalUrlString = [[NSMutableString alloc] initWithFormat:@"%@://%@%@?%@=%@&%@=%@&%@=%@&%@=%@",
-                                          protocol,
-                                          domain,
-                                          authorizeEndpoint,
+    NSMutableString *approvalUrlString = [[NSMutableString alloc] initWithFormat:@"%@://%@%@?%@=%@&%@=%@&%@=%@&%@=%@", credentials.protocol,
+                                          credentials.domain, [self brandedAuthorizeURL],
                                           kSFOAuthClientId, credentials.clientId,
                                           kSFOAuthRedirectUri, credentials.redirectUri,
                                           kSFOAuthDisplay, kSFOAuthDisplayTouch,
-                                          kSFOAuthDeviceId, [[[UIDevice currentDevice] identifierForVendor] UUIDString]];
-    if (webServerFlow) {
-        [approvalUrlString appendFormat:@"&%@=%@", kSFOAuthResponseType, kSFOAuthResponseTypeCode];
-
-        if (!codeChallenge) {
-            // Code verifier challenge:
-            //   - self.codeVerifier is a base64url-encoded random data string
-            //   - The code challenge sent here is an SHA-256 hash of self.codeVerifier, also base64url-encoded
-            //   - Later, self.codeVerifier will be sent to the service, to be used to compare against the initial code challenge sent here.
-            self.codeVerifier = [[SFSDKCryptoUtils randomByteDataWithLength:kSFOAuthCodeVerifierByteLength] msdkBase64UrlString];
-            codeChallenge = [[[self.codeVerifier dataUsingEncoding:NSUTF8StringEncoding] msdkSha256Data] msdkBase64UrlString];
-        }
-        [approvalUrlString appendFormat:@"&%@=%@", kSFOAuthCodeChallengeParamName, codeChallenge];
-    } else { // User-Agent
-        NSString *responseType = [[SalesforceSDKManager sharedManager] useHybridAuthentication] ? kSFOAuthResponseTypeHybridToken : kSFOAuthResponseTypeToken;
-        [approvalUrlString appendFormat:@"&%@=%@", kSFOAuthResponseType, responseType];
-    }
+                                          kSFOAuthDeviceId,[[[UIDevice currentDevice] identifierForVendor] UUIDString]];
     
-    // OAuth scopes
+    [approvalUrlString appendFormat:@"&%@=%@", kSFOAuthResponseType, kSFOAuthResponseTypeHybridToken];
+    NSString *scopeString = [self scopeQueryParamString];
+    if (scopeString != nil) {
+        [approvalUrlString appendString:scopeString];
+    }
+    return approvalUrlString;
+}
+
+- (NSString *)generateCodeApprovalUrlString:(SFOAuthCredentials *)spAppCredentials {
+    NSAssert(nil != self.credentials.domain, @"credentials.domain is required");
+    NSAssert(nil != spAppCredentials.clientId, @"credentials.clientId is required");
+    NSAssert(nil != spAppCredentials.redirectUri, @"credentials.redirectUri is required");
+    NSMutableString *approvalUrlString = [[NSMutableString alloc] initWithFormat:@"%@://%@%@?%@=%@&%@=%@&%@=%@&%@=%@&%@=%@",
+                                          @"https",
+                                          self.credentials.domain,
+                                          kSFOAuthEndPointAuthorize,
+                                          kSFOAuthClientId,spAppCredentials.clientId,
+                                          kSFOAuthRedirectUri,spAppCredentials.redirectUri,
+                                          kSFOAuthDisplay,kSFOAuthDisplayTouch,
+                                          kSFOAuthResponseType,kSFOAuthResponseTypeCode,
+                                          kSFOAuthDeviceId,[[[UIDevice currentDevice] identifierForVendor] UUIDString]];
+    
     NSString *scopeString = [self scopeQueryParamString];
     if (scopeString != nil) {
         [approvalUrlString appendString:scopeString];
@@ -729,6 +684,22 @@
     [scopes addObject:kSFOAuthRefreshToken];
     NSString *scopeStr = [[[scopes allObjects] componentsJoinedByString:@" "] stringByURLEncoding];
     return [NSString stringWithFormat:@"&%@=%@", kSFOAuthScope, scopeStr];
+}
+
++ (NSString *)advancedAuthStateDesc:(SFOAuthAdvancedAuthState)authState
+{
+    switch (authState) {
+        case SFOAuthAdvancedAuthStateBrowserRequestInitiated:
+            return @"SFOAuthAdvancedAuthStateBrowserRequestInitiated";
+            break;
+        case SFOAuthAdvancedAuthStateNotStarted:
+            return @"SFOAuthAdvancedAuthStateNotStarted";
+            break;
+        case SFOAuthAdvancedAuthStateTokenRequestInitiated:
+            return @"SFOAuthAdvancedAuthStateTokenRequestInitiated";
+        default:
+            return [NSString stringWithFormat:@"Unknown auth state (%lu)", (unsigned long)authState];
+    }
 }
 
 - (NSURLSession*)session {
@@ -745,23 +716,12 @@
     NSURL *url = navigationAction.request.URL;
     NSString *requestUrl = [url absoluteString];
     if ([self isRedirectURL:requestUrl]) {
-        if ([[SalesforceSDKManager sharedManager] useWebServerAuthentication]) {
-            [self handleWebServerResponse:url];
-        } else {
-            [self handleUserAgentResponse:url];
-        }
+        [self handleUserAgentResponse:url];
         decisionHandler(WKNavigationActionPolicyCancel);
     } else if ([self isSPAppRedirectURL:requestUrl]){
         [self handleIDPAuthCodeResponse:url];
         decisionHandler(WKNavigationActionPolicyCancel);
-    } else if ([self isBiometricPromptURL:requestUrl]) {
-        [SFSDKCoreLogger i:[self class] format:@"Caught biometric request scheme.  Showing native biometric promp."];
-        
-        SFBiometricAuthenticationManagerInternal *bioAuthManager = [SFBiometricAuthenticationManagerInternal shared];
-        if (bioAuthManager.locked && bioAuthManager.hasBiometricOptedIn) {
-            [bioAuthManager presentBiometricWithScene:self.view.window.windowScene];
-        }
-    } else {
+    }else {
         decisionHandler(WKNavigationActionPolicyAllow);
     }
 }
@@ -805,11 +765,6 @@
 - (BOOL) isSPAppRedirectURL:(NSString *)requestUrlString
 {
     return (self.spAppCredentials.redirectUri && [[requestUrlString lowercaseString] hasPrefix:[self.spAppCredentials.redirectUri lowercaseString]]);
-}
-
-- (BOOL) isBiometricPromptURL:(NSString *)requestedUrlString
-{
-    return [requestedUrlString isEqualToString:@"mobilesdk://biometric/authentication/prompt"];
 }
 
 - (void)sfwebView:(WKWebView *)webView didFailLoadWithError:(NSError *)error

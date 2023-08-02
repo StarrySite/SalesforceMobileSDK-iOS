@@ -67,14 +67,13 @@
 }
 
 +(void)screenLockValidation:(void (^)(void))completionBlock  {
-    [[SFScreenLockManagerInternal shared] setCallbackBlockWithScreenLockCallbackBlock:^{
+    [[SFScreenLockManager shared] setCallbackBlockWithScreenLockCallbackBlock:^{
             [SFSDKCoreLogger i:[self class] format:@"Screen unlocked or not configured.  Proceeding with authentication validation."];
             if (completionBlock) {
                 completionBlock();
             }
     }];
-    [[SFScreenLockManagerInternal shared] handleAppForeground];
-    [[SFBiometricAuthenticationManagerInternal shared] handleAppForeground];
+    [[SFScreenLockManager shared] handleAppForeground];
 }
 
 + (void)handleLogout:(void (^)(void))completionBlock {

@@ -24,6 +24,7 @@
 #import <WebKit/WebKit.h>
 #import "SFSDKWebViewStateManager.h"
 #import "SFUserAccountManager.h"
+static NSString *const ERR_NO_DOMAIN_NAMES = @"No domain names given for deleting cookies.";
 
 @implementation SFSDKWebViewStateManager
 
@@ -47,7 +48,7 @@ static BOOL _sessionCookieManagementDisabled = NO;
     }
     
     //reset WKWebView related state if any
-    [self removeWKWebViewCookies];
+    [self removeWKWebViewCookies:self.domains withCompletion:NULL];
   
 }
 
@@ -70,32 +71,64 @@ static BOOL _sessionCookieManagementDisabled = NO;
     _sessionCookieManagementDisabled = sessionCookieManagementDisabled;
 }
 
-+ (BOOL)isSessionCookieManagementDisabled {
+
++(BOOL) isSessionCookieManagementDisabled {
     return _sessionCookieManagementDisabled;
 }
 
 
 #pragma mark Private helper methods
 
-+ (void)removeWKWebViewCookies {
++ (void)removeWKWebViewCookies:(NSArray *)domainNames withCompletion:(nullable void(^)(void))completionBlock {
     if (_sessionCookieManagementDisabled) {
         [SFSDKCoreLogger d:self format:@"[%@ %@]: Cookie Management disabled. Will do nothing.", NSStringFromClass(self), NSStringFromSelector(_cmd)];
         return;
     }
     
+    NSAssert(domainNames != nil && [domainNames count] > 0, ERR_NO_DOMAIN_NAMES);
     WKWebsiteDataStore *dataStore = [WKWebsiteDataStore defaultDataStore];
     NSSet *websiteDataTypes = [NSSet setWithArray:@[ WKWebsiteDataTypeCookies]];
-    [dataStore removeDataOfTypes:websiteDataTypes modifiedSince:[NSDate distantPast] completionHandler:^{
-        // Intentionally blank because completion can't be nil
-    }];
+    [dataStore fetchDataRecordsOfTypes:websiteDataTypes
+                     completionHandler:^(NSArray<WKWebsiteDataRecord *> *records) {
+                         NSMutableArray<WKWebsiteDataRecord *> *deletedRecords = [NSMutableArray new];
+                         for (WKWebsiteDataRecord * record in records) {
+                             // Cookie record display names look like "salesforce.com", "force.com". Make
+                             // them look like proper cookie domain suffixes, for comparison.
+                             NSString *recordDisplayName = [NSString stringWithFormat:@".%@", record.displayName];
+                             for(NSString *domainName in domainNames) {
+                                 if ([domainName hasSuffix:recordDisplayName]) {
+                                     [deletedRecords addObject:record];
+                                 }
+                             }
+                         }
+                         if (deletedRecords.count > 0) {
+                             [dataStore removeDataOfTypes:websiteDataTypes
+                                           forDataRecords:deletedRecords
+                                        completionHandler:^{
+                                            if (completionBlock)
+                                                completionBlock();
+                                        }];
+                         } else {
+                             dispatch_async(dispatch_get_main_queue(), ^{
+                                 if (completionBlock) {
+                                     completionBlock();
+                                 }
+                             });
+                         }
+                     }];
 }
 
-+ (void)resetSessionCookie {
++ (NSArray<NSString *> *) domains {
+    return @[@".salesforce.com", @".force.com", @".cloudforce.com", @".site.com"];
+}
+
++ (void)resetSessionCookie
+{
     if (_sessionCookieManagementDisabled) {
         [SFSDKCoreLogger d:self format:@"[%@ %@]: Cookie Management disabled. Will do nothing.", NSStringFromClass(self), NSStringFromSelector(_cmd)];
         return;
     }
-    [self removeWKWebViewCookies];
+    [self removeWKWebViewCookies:self.domains withCompletion:nil];
 }
 
 @end

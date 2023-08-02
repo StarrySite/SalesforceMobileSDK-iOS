@@ -1,11 +1,6 @@
 /*
- SFSDKSPLoginResponseCommand.h
- SalesforceSDKCore
-
- Created by Raj Rao on 9/28/17.
-
- Copyright (c) 2017-present, salesforce.com, inc. All rights reserved.
-
+ Copyright (c) 2014-present, salesforce.com, inc. All rights reserved.
+ 
  Redistribution and use of this software in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
  * Redistributions of source code must retain the above copyright notice, this list of conditions
@@ -16,7 +11,7 @@
  * Neither the name of salesforce.com, inc. nor the names of its contributors may be used to
  endorse or promote products derived from this software without specific prior written
  permission of salesforce.com, inc.
-
+ 
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,15 +21,25 @@
  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#import "SFSDKAuthCommand.h"
 
-// Sent by IDP to SP in response to SPLoginRequest
-@interface SFSDKSPLoginResponseCommand : SFSDKAuthCommand
+#import "SFKeyStoreManager.h"
+#import "SFGeneratedKeyStore.h"
 
-@property (nonatomic,copy) NSString *state;
+@interface SFKeyStoreManager ()
 
-@property (nonatomic,copy) NSString *authCode;
+@property (nonatomic, strong) SFGeneratedKeyStore *generatedKeyStore;
 
-@property (nonatomic,copy) NSString *domain;
+/**
+ Creates a default key store key.
+ @return The generated key used to encrypt/decrypt the key store.
+ */
+- (SFKeyStoreKey *)createDefaultKey;
+
+/**
+ Converts an NSString-based key into NSData.
+ @param keyString The key to convert.
+ @return The NSData representation of the key.
+ */
++ (NSData *)keyStringToData:(NSString *)keyString;
 
 @end

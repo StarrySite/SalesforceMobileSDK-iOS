@@ -31,7 +31,6 @@
 @class SFSDKLoginHost;
 @class SFSDKLoginViewControllerConfig;
 @class SFSDKLoginHostListViewController;
-@class SFBiometricAuthenticationManager;
 
 /**
  * Delegate protocol for the owner of SFLoginViewController.

@@ -31,12 +31,10 @@
 #import "SFSDKURLHandlerManager.h"
 #import "SFSDKAdvancedAuthURLHandler.h"
 #import "SFSDKIDPRequestHandler.h"
-#import "SFSDKSPLoginResponseHandler.h"
+#import "SFSDKIDPResponseHandler.h"
 #import "SFSDKIDPErrorHandler.h"
 #import "SFSDKURLHandler.h"
-#import "SFSDKIDPLoginRequestHandler.h"
-#import "SFSDKIDPAuthCodeLoginRequestHandler.h"
-
+#import "SFSDKIDPInitiatedAuthRequestHandler.h"
 @interface SFSDKURLHandlerManager() {
     NSMutableArray<id <SFSDKURLHandler>> *handlerList;
 }
@@ -49,12 +47,11 @@
     self = [super init];
     if (self) {
         handlerList = [NSMutableArray new];
-        [handlerList addObject:[[SFSDKAdvancedAuthURLHandler alloc] init]];
-        [handlerList addObject:[[SFSDKIDPRequestHandler alloc] init]];
-        [handlerList addObject:[[SFSDKSPLoginResponseHandler alloc] init]];
-        [handlerList addObject:[[SFSDKIDPErrorHandler alloc] init]];
-        [handlerList addObject:[[SFSDKIDPLoginRequestHandler alloc] init]];
-        [handlerList addObject:[[SFSDKIDPAuthCodeLoginRequestHandler alloc] init]];
+        [handlerList addObject:[[SFSDKAdvancedAuthURLHandler  alloc] init]];
+        [handlerList addObject:[[SFSDKIDPRequestHandler  alloc] init]];
+        [handlerList addObject:[[SFSDKIDPResponseHandler  alloc] init]];
+        [handlerList addObject:[[SFSDKIDPErrorHandler  alloc] init]];
+        [handlerList addObject:[[SFSDKIDPInitiatedAuthRequestHandler alloc] init]];
     }
     return self;
 }
@@ -70,19 +67,12 @@
     return result;
 }
 
-- (BOOL)processRequest:(NSURL *)url
-               options:(NSDictionary *)options
-            completion:(SFUserAccountManagerSuccessCallbackBlock)completionBlock
-               failure:(SFUserAccountManagerFailureCallbackBlock)failureBlock {
+- (BOOL)processRequest:(NSURL *)url options:(NSDictionary *)options {
 
     __block BOOL result = NO;
     [handlerList enumerateObjectsUsingBlock:^(id <SFSDKURLHandler> handler, NSUInteger idx, BOOL *stop) {
         if ([handler canHandleRequest:url options:options]) {
-            if ([handler respondsToSelector:@selector(processRequest:options:completion:failure:)]) {
-                result = [handler processRequest:url options:options completion:completionBlock failure:failureBlock];
-            } else {
-                result = [handler processRequest:url options:options];
-            }
+            result = [handler processRequest:url options:options];
         }
         *stop = result;
     }];

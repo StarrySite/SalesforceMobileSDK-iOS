@@ -23,7 +23,7 @@
  */
 
 #import <XCTest/XCTest.h>
-#import "SFSDKSPLoginRequestCommand.h"
+#import "SFSDKAuthRequestCommand.h"
 @interface SFSDKAuthRequestCommandTest : XCTestCase
 
 @end
@@ -37,7 +37,7 @@
 }
 
 - (void)testSFSDKAuthRequestCommand {
-    SFSDKSPLoginRequestCommand *test = [[SFSDKSPLoginRequestCommand alloc]init];
+    SFSDKAuthRequestCommand *test = [[SFSDKAuthRequestCommand alloc]init];
     XCTAssertNotNil(test);
     NSString *testURL = @"atest://atest/v1.0/authrequest";
     XCTAssertTrue([test isAuthCommand:[NSURL URLWithString:testURL]]);
@@ -47,7 +47,7 @@
 }
 
 - (void)testSFSDKAuthRequestCommandBadURL {
-    SFSDKSPLoginRequestCommand *test = [[SFSDKSPLoginRequestCommand alloc]init];    XCTAssertNotNil(test);
+    SFSDKAuthRequestCommand *test = [[SFSDKAuthRequestCommand alloc]init];    XCTAssertNotNil(test);
     NSString *testURL = @"atest://atest/authrequest";
     NSURL *url = [NSURL URLWithString:testURL];
     XCTAssertNotNil(url);
@@ -63,10 +63,11 @@
     NSString *spChallengeCode = @"AChallenge";
     NSString *userHint = @"USER:ORG";
     NSString *spAppName = @"AnApp";
+    NSString *spAppDesc = @"An Apps Description";
     NSString *spAppScopes = @"Scope1,Scope2";
     
     
-    SFSDKSPLoginRequestCommand *test = [[SFSDKSPLoginRequestCommand alloc]init];
+    SFSDKAuthRequestCommand *test = [[SFSDKAuthRequestCommand alloc]init];
     XCTAssertNotNil(test);
     test.spClientId = spClientId;
     test.spAppName = spAppName;
@@ -75,12 +76,13 @@
     test.spRedirectURI = spRedirectURI;
     test.spAppScopes = spAppScopes;
     test.spState = spState;
+    test.spAppDescription = spAppDesc;
     test.scheme = @"app";
     
     XCTAssertNotNil([test requestURL]);
     XCTAssertTrue([test isAuthCommand:[test requestURL]]);
     
-    SFSDKSPLoginRequestCommand *test2 = [[SFSDKSPLoginRequestCommand alloc]init];
+    SFSDKAuthRequestCommand *test2 = [[SFSDKAuthRequestCommand alloc]init];
     
     XCTAssertTrue([test2 isAuthCommand:[test requestURL]]);
     [test2 fromRequestURL:[test requestURL]];

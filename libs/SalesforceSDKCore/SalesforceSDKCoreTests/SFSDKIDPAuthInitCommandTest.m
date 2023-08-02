@@ -23,12 +23,12 @@
  */
 
 #import <XCTest/XCTest.h>
-#import "SFSDKSPLoginResponseCommand.h"
-@interface SFSDKSPLoginResponseCommandTest : XCTestCase
+#import "SFSDKIDPInitCommand.h"
+@interface SFSDKIDPAuthInitCommandTest : XCTestCase
 
 @end
 
-@implementation SFSDKSPLoginResponseCommandTest
+@implementation SFSDKIDPAuthInitCommandTest
 - (void)setUp {
     [super setUp];
 }
@@ -37,19 +37,18 @@
 }
 
 - (void)testSFSDKAuthResponseCommand {
-    SFSDKSPLoginResponseCommand *test = [[SFSDKSPLoginResponseCommand alloc]init];
+    SFSDKIDPInitCommand *test = [[SFSDKIDPInitCommand alloc]init];
     XCTAssertNotNil(test);
-    NSString *testURL = @"atest://atest/v1.0/authresponse";
+    NSString *testURL = @"atest://atest/v1.0/idpinit";
     XCTAssertTrue([test isAuthCommand:[NSURL URLWithString:testURL]]);
-    
     XCTAssertTrue([test isAuthCommand:[NSURL URLWithString:testURL.uppercaseString]]);
     
 }
 
 - (void)testSFSDKAuthResponseCommandBadURL {
-    SFSDKSPLoginResponseCommand *test = [[SFSDKSPLoginResponseCommand alloc]init];
+    SFSDKIDPInitCommand *test = [[SFSDKIDPInitCommand alloc]init];
     XCTAssertNotNil(test);
-    NSString *testURL = @"atest://atest/authresponse";
+    NSString *testURL = @"atest://atest/idpinit";
     NSURL *url = [NSURL URLWithString:testURL];
     XCTAssertNotNil(url);
     XCTAssertTrue(![test isAuthCommand:url]);
@@ -58,20 +57,17 @@
 
 - (void)testSFSDKAuthErrorCommandWithParameters {
     
-    SFSDKSPLoginResponseCommand *test = [[SFSDKSPLoginResponseCommand alloc]init];
+    SFSDKIDPInitCommand *test = [[SFSDKIDPInitCommand alloc]init];
     XCTAssertNotNil(test);
-    test.state = @"astate";
-    test.authCode = @"authCode";
+    test.userHint = @"userHint";
     
     XCTAssertNotNil([test requestURL]);
     
-    SFSDKSPLoginResponseCommand *test2 = [[SFSDKSPLoginResponseCommand alloc]init];
+    SFSDKIDPInitCommand *test2 = [[SFSDKIDPInitCommand alloc]init];
     [test2 isAuthCommand:[test requestURL]];
     [test2 fromRequestURL:[test requestURL]];
     
-    XCTAssertTrue([test2.authCode isEqualToString:test.authCode], @"Auth codes should be the same  after decoding");
-    
-   XCTAssertTrue([test2.state isEqualToString:test.state], @"State should be the same  after decoding");
-}
+    XCTAssertTrue([test2.userHint isEqualToString:test.userHint], @"Userhint should be the same  after decoding");
 
+}
 @end

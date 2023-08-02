@@ -1,8 +1,8 @@
 /*
- SFSDKIDPResponseHandler.h
+ SFSDKIDPResponseHandler.m
  SalesforceSDKCore
  
- Created by Raj Rao on 8/28/17.
+ Created by Raj Rao on 8/25/17.
  
  Copyright (c) 2017-present, salesforce.com, inc. All rights reserved.
  
@@ -27,9 +27,30 @@
  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <Foundation/Foundation.h>
-#import "SFSDKURLHandler.h"
+#import "SFSDKIDPConstants.h"
+#import "SFSDKIDPResponseHandler.h"
+#import "SFSDKAuthPreferences.h"
+#import "NSURL+SFAdditions.h"
+#import "SFUserAccountManager+URLHandlers.h"
+#import "SFSDKAuthPreferences.h"
+#import "SFSDKAuthResponseCommand.h"
 
-@interface SFSDKSPLoginResponseHandler : NSObject<SFSDKURLHandler>
+@implementation SFSDKIDPResponseHandler
+
+- (BOOL)canHandleRequest:(NSURL *)url options:(NSDictionary *)options {
+    SFSDKAuthResponseCommand *command = [[SFSDKAuthResponseCommand alloc] init];
+    return [command isAuthCommand:url];
+}
+
+- (BOOL)processRequest:(NSURL *)url options:(NSDictionary *)options {
+
+    SFSDKAuthResponseCommand *command = [[SFSDKAuthResponseCommand alloc] init];
+    [command fromRequestURL:url];
+
+    [[SFUserAccountManager sharedInstance] handleIdpResponse:command sceneId:options[kSFIDPSceneIdKey]];
+    return NO;
+
+}
+
 
 @end
