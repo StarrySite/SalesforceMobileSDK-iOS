@@ -300,7 +300,7 @@ NSString * const kSFBiometricAuthenticationFlowCompleted = @"SFBiometricAuthenti
         self.userAgentString = [self defaultUserAgentString];
         self.URLCacheType = kSFURLCacheTypeEncrypted;
         self.useEphemeralSessionForAdvancedAuth = YES;
-        self.useWebServerAuthentication = YES;
+        self.useWebServerAuthentication = NO;
         self.blockSalesforceIntegrationUser = NO;
         self.useHybridAuthentication = YES;
         [self setupServiceConfiguration];
