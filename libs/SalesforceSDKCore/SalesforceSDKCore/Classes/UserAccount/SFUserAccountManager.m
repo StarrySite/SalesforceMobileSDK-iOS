@@ -1654,44 +1654,59 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     SFIdentityCoordinator *identityCoordinator = authSession.identityCoordinator;
     BOOL hasMobilePolicy = identityCoordinator.idData.mobilePoliciesConfigured;
     int lockTimeout = identityCoordinator.idData.mobileAppScreenLockTimeout;
-    NSDictionary *customAttributes = identityCoordinator.idData.customAttributes;
-    BOOL hasBioAuthPolicy = (customAttributes != nil) && customAttributes[kBiometricAuthenticationPolicyKey];
-    int sessionTimeout = (customAttributes != nil) && customAttributes[kBiometricAuthenticationTimeoutKey];
-    SFBiometricAuthenticationManagerInternal *bioAuthManager = [SFBiometricAuthenticationManagerInternal shared];
-    // Store current user credentials in case they need to be revoked for Biometric Authentication
-    SFOAuthCredentials *preLoginCredentials = self.currentUser.credentials;
-    
-    // Set session timeout to the lowest value (15 minutes) of not specified.
-    if (hasBioAuthPolicy && (sessionTimeout < 1)) {
-        sessionTimeout = 15;
-    }
+
+//    NSDictionary *customAttributes = identityCoordinator.idData.customAttributes;
+//    BOOL hasBioAuthPolciy = (customAttributes != nil) && customAttributes[kBiometricAuthenticationPolicyKey];
+//    int sessionTimeout = (customAttributes != nil) && customAttributes[kBiometricAuthenticationTimeoutKey];
+//    SFBiometricAuthenticationManagerInternal *bioAuthManager = [SFBiometricAuthenticationManagerInternal shared];
+//    // Store current user credentials in case they need to be revoked for Biometric Authentication
+//    SFOAuthCredentials *preLoginCredentials = self.currentUser.credentials;
+//
+//    // Set session timeout to the lowest value (15 minutes) of not specified.
+//    if (hasMobilePolicy && (sessionTimeout < 1)) {
+//        sessionTimeout = 15;
+//    }
     
     __weak typeof(self) weakSelf = self;
-    [self dismissAuthViewControllerIfPresentForScene:authSession.oauthRequest.scene completion:^{
-          __strong typeof(weakSelf) strongSelf = weakSelf;
-        [strongSelf finalizeAuthCompletion:authSession];
+  [self dismissAuthViewControllerIfPresentForScene:authSession.oauthRequest.scene completion:^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+          [strongSelf finalizeAuthCompletionForUserAccount:authSession];
+          if (authSession.authInfo.authType != SFOAuthTypeRefresh) {
+              [strongSelf checkBiometric:authSession hasMobilePolicy:hasMobilePolicy lockTimeout: lockTimeout];
+          }
+      }];
+      [self dismissAuthViewControllerIfPresent];
+  }
 
-        if (authSession.authInfo.authType != SFOAuthTypeRefresh) {
-            if (hasBioAuthPolicy) {
-                if ([bioAuthManager locked]) {
-                    [bioAuthManager unlockPostProcessing];
-                }
-                
-                [SFSDKAppFeatureMarkers registerAppFeature:kSFAppFeatureBioAuth];
-                [bioAuthManager storePolicyWithUserAccount:self.currentUser hasMobilePolicy:hasBioAuthPolicy sessionTimeout:sessionTimeout];
-                
-                if (preLoginCredentials != nil && ![preLoginCredentials.refreshToken isEqualToString:self.currentUser.credentials.refreshToken]) {
-                    
-                    id<SFSDKOAuthProtocol> authClient = self.authClient();
-                    [authClient revokeRefreshToken:preLoginCredentials];
-                }
-            } else if(hasMobilePolicy) {
-                [SFSDKAppFeatureMarkers registerAppFeature:kSFAppFeatureScreenLock];
-                [[SFScreenLockManagerInternal shared] storeMobilePolicyWithUserAccount:self.currentUser hasMobilePolicy:hasMobilePolicy lockTimeout:lockTimeout];
-            }
-        }
-    }];
-    [self dismissAuthViewControllerIfPresent];
+- (void)checkBiometric:(SFSDKAuthSession *)authSession
+       hasMobilePolicy:(BOOL)hasMobilePolicy
+           lockTimeout:(int)lockTimeout
+{
+    if (hasMobilePolicy == YES) {
+      __weak typeof(self) weakSelf = self;
+      [[SFScreenLockManagerInternal shared] setCallbackBlockWithScreenLockCallbackBlock:^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        [strongSelf finalizeAuthCompletionForCallbacksAndNotification:authSession];
+      }];
+    }
+    [[SFScreenLockManagerInternal shared] storeMobilePolicyWithUserAccount:self.currentUser hasMobilePolicy:hasMobilePolicy lockTimeout:lockTimeout];
+}
+
+- (void)finalizeAuthCompletionForCallbacksAndNotification:(SFSDKAuthSession *)authSession {
+    BOOL shouldNotify = authSession.oauthRequest.authenticateRequestFromSPApp?(authSession.oauthRequest.authenticateRequestFromSPApp && self.currentUser == nil):YES;
+    SFOAuthInfo *authInfo = authSession.authInfo;
+    
+    if (authSession.authSuccessCallback) {
+        authSession.authSuccessCallback(authSession.authInfo, self.currentUser);
+    }
+    //notify for all login flows except during an SP apps login request.
+    if (shouldNotify) {
+        [self notifyLoginCompletion:self.currentUser authInfo:authInfo];
+    }
+  
+    if (!authSession.oauthRequest.authenticateRequestFromSPApp) {
+        [self resetAuthentication];
+    }
 }
 
 - (void)handleFailure:(NSError *)error session:(SFSDKAuthSession *)authSession {
@@ -1755,7 +1770,7 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     [_accountsLock unlock];
 }
 
-- (void)finalizeAuthCompletion:(SFSDKAuthSession *)authSession {
+- (void)finalizeAuthCompletionForUserAccount:(SFSDKAuthSession *)authSession {
     // Apply the credentials that will ensure there is a user and that this
     // current user as the proper credentials.
     SFUserAccount *userAccount = [self applyCredentials:authSession.oauthCoordinator.credentials withIdData:authSession.identityCoordinator.idData];
@@ -1785,22 +1800,8 @@ static NSString * const kSFGenericFailureAuthErrorHandler = @"GenericFailureErro
     if (self.currentUser == nil || !authSession.oauthRequest.authenticateRequestFromSPApp) {
         [self setCurrentUserInternal:userAccount];
     }
-
-    shouldNotify = authSession.oauthRequest.authenticateRequestFromSPApp?(authSession.oauthRequest.authenticateRequestFromSPApp && self.currentUser == nil):YES;
-    SFOAuthInfo *authInfo = authSession.authInfo;
-    
-    if (authSession.authSuccessCallback) {
-        authSession.authSuccessCallback(authSession.authInfo, userAccount);
-    }
-    //notify for all login flows except during an SP apps login request.
-    if (shouldNotify) {
-        [self notifyLoginCompletion:userAccount authInfo:authInfo];
-    }
-    
-    if (!authSession.oauthRequest.authenticateRequestFromSPApp) {
-        [self resetAuthentication];
-    }
 }
+
 - (void)notifyLoginCompletion:(SFUserAccount *)userAccount authInfo:(SFOAuthInfo *)authInfo {
      
      NSDictionary *userInfo = @{kSFNotificationUserInfoAccountKey: userAccount,
