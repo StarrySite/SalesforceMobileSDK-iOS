@@ -10,8 +10,8 @@ Pod::Spec.new do |s|
 
   s.platform     = :ios, "15.0"
 
-  s.source       = { :git => "https://github.com/forcedotcom/SalesforceMobileSDK-iOS.git",
-                     :tag => "v#{s.version}" }
+  s.source       = { :git => "https://github.com/StarrySite/SalesforceMobileSDK-iOS.git",
+                     :branch => "11.1.0_1" }
 
   s.frameworks   = 'CoreTelephony'
 
@@ -20,7 +20,7 @@ Pod::Spec.new do |s|
 
   s.subspec 'SalesforceAnalytics' do |sdkanalytics|
 
-      sdkanalytics.dependency 'SalesforceSDKCommon', :git => "https://github.com/StarrySite/SalesforceMobileSDK-iOS.git", :branch => "11.1.0_1"
+      sdkanalytics.dependency 'SalesforceSDKCommon', "~>#{s.version}"
       sdkanalytics.source_files = 'libs/SalesforceAnalytics/SalesforceAnalytics/Classes/**/*.{h,m}', 'libs/SalesforceAnalytics/SalesforceAnalytics/SalesforceAnalytics.h'
       sdkanalytics.public_header_files = 'libs/SalesforceAnalytics/SalesforceAnalytics/Classes/Transform/SFSDKAILTNTransform.h', 'libs/SalesforceAnalytics/SalesforceAnalytics/Classes/Util/SFSDKAnalyticsLogger.h', 'libs/SalesforceAnalytics/SalesforceAnalytics/Classes/Manager/SFSDKAnalyticsManager.h', 'libs/SalesforceAnalytics/SalesforceAnalytics/Classes/Model/SFSDKDeviceAppAttributes.h', 'libs/SalesforceAnalytics/SalesforceAnalytics/Classes/Store/SFSDKEventStoreManager.h', 'libs/SalesforceAnalytics/SalesforceAnalytics/Classes/Model/SFSDKInstrumentationEvent.h', 'libs/SalesforceAnalytics/SalesforceAnalytics/Classes/Model/SFSDKInstrumentationEventBuilder.h', 'libs/SalesforceAnalytics/SalesforceAnalytics/Classes/Transform/SFSDKTransform.h', 'libs/SalesforceAnalytics/SalesforceAnalytics/SalesforceAnalytics.h'
       sdkanalytics.prefix_header_contents = '#import "SFSDKAnalyticsLogger.h"'
