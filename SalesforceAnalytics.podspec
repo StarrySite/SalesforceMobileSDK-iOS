@@ -10,8 +10,8 @@ Pod::Spec.new do |s|
 
   s.platform     = :ios, "15.0"
 
-  s.source       = { :git => "https://github.com/StarrySite/SalesforceMobileSDK-iOS.git",
-                     :branch => "11.1.0_1" }
+  s.source       = { :git => "https://github.com/forcedotcom/SalesforceMobileSDK-iOS.git",
+                     :tag => "v#{s.version}" }
 
   s.frameworks   = 'CoreTelephony'
 
