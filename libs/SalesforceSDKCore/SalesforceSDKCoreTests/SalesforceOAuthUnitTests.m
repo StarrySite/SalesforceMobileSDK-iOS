@@ -39,9 +39,8 @@ static NSString * const kTestRefreshToken = @"HowRefreshing";
 
 @interface SFOAuthKeychainCredentials (Testing)
 
-- (NSString *)refreshTokenWithEncryptionKey:(NSData *)encryptionKey;
-- (NSString *)accessTokenWithEncryptionKey:(NSData *)encryptionKey;
-- (NSData *)encryptionKeyForService:(NSString *)service;
+- (NSString *)decryptedTokenForService:(NSString *)service;
+- (void)encryptToken:(NSString *)token forService:(NSString *)service;
 
 @end
 
@@ -130,12 +129,25 @@ static NSString * const kTestRefreshToken = @"HowRefreshing";
     credsIn.organizationId  = @"org";
     credsIn.identityUrl     = [NSURL URLWithString:@"https://login.salesforce.com/ID/orgID/eighteenCharUsrXYZ"];
     credsIn.instanceUrl     = [NSURL URLWithString:@"http://www.salesforce.com"];
+    credsIn.apiInstanceUrl  = [NSURL URLWithString:@"http://api.salesforce.com"];
     credsIn.issuedAt        = [NSDate date];
+    credsIn.contentDomain   = @"mobilesdk.my.salesforce.com";
+    credsIn.contentSid      = @"contentsid";
+    credsIn.lightningDomain = @"mobilesdk.lightning.force.com";
+    credsIn.lightningSid    = @"lightningsid";
+    credsIn.vfDomain        = @"mobilesdk.vf.force.com";
+    credsIn.vfSid           = @"vfsid";
+    credsIn.csrfToken       = @"csrf-token-test";
+    credsIn.cookieClientSrc = @"cookie-client-src-test";
+    credsIn.cookieSidClient = @"cookie-sid-client";
+    credsIn.sidCookieName   = @"sid-cookie-name";
+    credsIn.parentSid       = @"parent-sid";
+    credsIn.tokenFormat     = @"token-format";
+    credsIn.beaconChildConsumerKey = @"beacon-child-consumer-key";
+    credsIn.beaconChildConsumerSecret = @"beacon-child-consumer-secret";
+
     credsIn.additionalOAuthFields = @{
-        @"content_domain": @"mobilesdk.my.salesforce.com",
-        @"content_sid": @"contentsid",
-        @"lightning_domain": @"mobilesdk.lightning.force.com",
-        @"lightning_sid": @"lightningsid",
+        @"abc": @"def"
     };
     
     NSString *expectedUserId = @"eighteenCharUsrXYZ"; // derived from identityUrl
@@ -152,15 +164,30 @@ static NSString * const kTestRefreshToken = @"HowRefreshing";
     
     XCTAssertNotNil(credsOut, @"couldn't unarchive credentials");
     
-    XCTAssertEqualObjects(credsIn.identifier,        credsOut.identifier,        @"identifier mismatch");
-    XCTAssertEqualObjects(credsIn.clientId,          credsOut.clientId,          @"clientId mismatch");
-    XCTAssertEqualObjects(credsIn.domain,            credsOut.domain,            @"domain mismatch");
-    XCTAssertEqualObjects(credsIn.redirectUri,       credsOut.redirectUri,       @"redirectUri mismatch");
-    XCTAssertEqualObjects(credsIn.organizationId,    credsOut.organizationId,    @"organizationId mismatch");
-    XCTAssertEqualObjects(credsIn.identityUrl,       credsOut.identityUrl,       @"identityUrl mistmatch");
-    XCTAssertEqualObjects(expectedUserId,            credsOut.userId,            @"userId mismatch");
-    XCTAssertEqualObjects(credsIn.instanceUrl,       credsOut.instanceUrl,       @"instanceUrl mismatch");
-    XCTAssertEqualObjects(credsIn.issuedAt,          credsOut.issuedAt,          @"issuedAt mismatch");
+    XCTAssertEqualObjects(credsIn.identifier,          credsOut.identifier,          @"identifier mismatch");
+    XCTAssertEqualObjects(credsIn.clientId,            credsOut.clientId,            @"clientId mismatch");
+    XCTAssertEqualObjects(credsIn.domain,              credsOut.domain,              @"domain mismatch");
+    XCTAssertEqualObjects(credsIn.redirectUri,         credsOut.redirectUri,         @"redirectUri mismatch");
+    XCTAssertEqualObjects(credsIn.organizationId,      credsOut.organizationId,      @"organizationId mismatch");
+    XCTAssertEqualObjects(credsIn.identityUrl,         credsOut.identityUrl,         @"identityUrl mismatch");
+    XCTAssertEqualObjects(expectedUserId,              credsOut.userId,              @"userId mismatch");
+    XCTAssertEqualObjects(credsIn.instanceUrl,         credsOut.instanceUrl,         @"instanceUrl mismatch");
+    XCTAssertEqualObjects(credsIn.apiInstanceUrl,      credsOut.apiInstanceUrl,      @"apiInstanceUrl mismatch");
+    XCTAssertEqualObjects(credsIn.issuedAt,            credsOut.issuedAt,            @"issuedAt mismatch");
+    XCTAssertEqualObjects(credsIn.contentDomain,       credsOut.contentDomain,       @"contentDomain mismatch");
+    XCTAssertEqualObjects(credsIn.contentSid,          credsOut.contentSid,          @"contentSid mismatch");
+    XCTAssertEqualObjects(credsIn.lightningDomain,     credsOut.lightningDomain,     @"lightningDomain mismatch");
+    XCTAssertEqualObjects(credsIn.lightningSid,        credsOut.lightningSid,        @"lightningSid mismatch");
+    XCTAssertEqualObjects(credsIn.vfDomain,            credsOut.vfDomain,            @"vfDomain mismatch");
+    XCTAssertEqualObjects(credsIn.vfSid,               credsOut.vfSid,               @"vfSid mismatch");
+    XCTAssertEqualObjects(credsIn.csrfToken,           credsOut.csrfToken,           @"csrfToken mismatch");
+    XCTAssertEqualObjects(credsIn.cookieClientSrc,     credsOut.cookieClientSrc,     @"cookieClientSrc mismatch");
+    XCTAssertEqualObjects(credsIn.cookieSidClient,     credsOut.cookieSidClient,     @"cookieSidClient mismatch");
+    XCTAssertEqualObjects(credsIn.sidCookieName,       credsOut.sidCookieName,       @"sidCookieName mismatch");
+    XCTAssertEqualObjects(credsIn.parentSid,           credsOut.parentSid,           @"parentSid mismatch");
+    XCTAssertEqualObjects(credsIn.tokenFormat,         credsOut.tokenFormat,         @"tokenFormat mismatch");
+    XCTAssertEqualObjects(credsIn.beaconChildConsumerKey,    credsOut.beaconChildConsumerKey,    @"beaconChildConsumerKey mismatch");
+    XCTAssertEqualObjects(credsIn.beaconChildConsumerSecret, credsOut.beaconChildConsumerSecret, @"beaconChildConsumerSecret mismatch");
     XCTAssertEqualObjects(credsIn.additionalOAuthFields, credsOut.additionalOAuthFields, @"additionalFields mismatch");
     
     credsIn = nil;
@@ -174,11 +201,26 @@ static NSString * const kTestRefreshToken = @"HowRefreshing";
     NSString *accessTokenToCheck = @"accessToken";
     NSString *orgIdToCheck = @"orgID";
     NSURL *instanceUrlToCheck = [NSURL URLWithString:@"https://na1.salesforce.com"];
+    NSURL *apiInstanceUrlToCheck = [NSURL URLWithString:@"https://api.salesforce.com"];
     NSString *communityIdToCheck = @"communityID";
     NSURL *communityUrlToCheck = [NSURL URLWithString:@"https://mycomm.my.salesforce.com/customers"];
     NSDate *issuedAtToCheck = [NSDate date];
     NSURL *identityUrlToCheck = [NSURL URLWithString:@"https://login.salesforce.com/id/someOrg/someUser"];
     NSString *userIdToCheck = @"userID";
+    NSString *contentDomainToCheck = @"mobilesdk.my.salesforce.com";
+    NSString *contentSidToCheck = @"contentsid";
+    NSString *lightningDomainToCheck = @"mobilesdk.lightning.force.com";
+    NSString *lightningSidToCheck = @"lightningsid";
+    NSString *vfDomainToCheck = @"mobilesdk.vf.force.com";
+    NSString *vfSidToCheck = @"vfsid";
+    NSString *csrfTokenToCheck = @"csrf-token-test";
+    NSString *cookieClientSrcToCheck = @"cookie-client-src-test";
+    NSString *cookieSidClientToCheck = @"cookie-sid-client";
+    NSString *sidCookieNameToCheck = @"sid-cookie-name";
+    NSString *parentSidToCheck = @"parent-sid";
+    NSString *tokenFormatToCheck = @"token-format";
+    NSString *beaconChildConsumerKeyCheck = @"beacon-child-consumer-key";
+    NSString *beaconChildConsumerSecretCheck = @"beacon-child-consumer-secret";
     NSDictionary *additionalFieldsToCheck = @{ @"field1": @"field1Val" };
     
     SFOAuthCredentials *origCreds = [[SFOAuthCredentials alloc] initWithIdentifier:kIdentifier clientId:kClientId encrypted:YES];
@@ -188,10 +230,25 @@ static NSString * const kTestRefreshToken = @"HowRefreshing";
     origCreds.refreshToken = refreshTokenToCheck;
     origCreds.accessToken = accessTokenToCheck;
     origCreds.instanceUrl = instanceUrlToCheck;
+    origCreds.apiInstanceUrl = apiInstanceUrlToCheck;
     origCreds.communityId = communityIdToCheck;
     origCreds.communityUrl = communityUrlToCheck;
     origCreds.issuedAt = issuedAtToCheck;
-    
+    origCreds.contentDomain = contentDomainToCheck;
+    origCreds.contentSid = contentSidToCheck;
+    origCreds.lightningDomain = lightningDomainToCheck;
+    origCreds.lightningSid = lightningSidToCheck;
+    origCreds.vfDomain = vfDomainToCheck;
+    origCreds.vfSid = vfSidToCheck;
+    origCreds.csrfToken = csrfTokenToCheck;
+    origCreds.cookieClientSrc = cookieClientSrcToCheck;
+    origCreds.cookieSidClient = cookieSidClientToCheck;
+    origCreds.sidCookieName = sidCookieNameToCheck;
+    origCreds.parentSid = parentSidToCheck;
+    origCreds.tokenFormat = tokenFormatToCheck;
+    origCreds.beaconChildConsumerKey = beaconChildConsumerKeyCheck;
+    origCreds.beaconChildConsumerSecret = beaconChildConsumerSecretCheck;
+
     // NB: Intentionally ordering the setting of these, because setting the identity URL automatically
     // sets the OrgID and UserID.  This ensures the values stay in sync.
     origCreds.identityUrl = identityUrlToCheck;
@@ -209,11 +266,26 @@ static NSString * const kTestRefreshToken = @"HowRefreshing";
     origCreds.accessToken = nil;
     origCreds.organizationId = nil;
     origCreds.instanceUrl = nil;
+    origCreds.apiInstanceUrl = nil;
     origCreds.communityId = nil;
     origCreds.communityUrl = nil;
     origCreds.issuedAt = nil;
     origCreds.identityUrl = nil;
     origCreds.userId = nil;
+    origCreds.contentDomain = nil;
+    origCreds.contentSid = nil;
+    origCreds.lightningDomain = nil;
+    origCreds.lightningSid = nil;
+    origCreds.vfDomain = nil;
+    origCreds.vfSid = nil;
+    origCreds.csrfToken = nil;
+    origCreds.cookieClientSrc = nil;
+    origCreds.cookieSidClient = nil;
+    origCreds.sidCookieName = nil;
+    origCreds.parentSid = nil;
+    origCreds.tokenFormat = nil;
+    origCreds.beaconChildConsumerKey = nil;
+    origCreds.beaconChildConsumerSecret = nil;
     origCreds.additionalOAuthFields = nil;
     
     XCTAssertNotEqual(origCreds, copiedCreds);
@@ -224,16 +296,32 @@ static NSString * const kTestRefreshToken = @"HowRefreshing";
     XCTAssertEqual(copiedCreds.jwt, jwtToCheck);
     XCTAssertNotEqual(origCreds.jwt, copiedCreds.jwt);
     
-    // NB: Access and refresh tokens cannot be distinct after copy and change, because of the keychain.
+    // NB: Fields stored in keychain cannot be distinct after copy and change
     XCTAssertNotEqual(copiedCreds.refreshToken, refreshTokenToCheck);
     XCTAssertEqual(origCreds.refreshToken, copiedCreds.refreshToken);
     XCTAssertNotEqual(copiedCreds.accessToken, accessTokenToCheck);
     XCTAssertEqual(origCreds.accessToken, copiedCreds.accessToken);
-    
+    XCTAssertNotEqual(copiedCreds.lightningSid, lightningSidToCheck);
+    XCTAssertEqual(origCreds.lightningSid, copiedCreds.lightningSid);
+    XCTAssertNotEqual(copiedCreds.vfSid, vfSidToCheck);
+    XCTAssertEqual(origCreds.vfSid, copiedCreds.vfSid);
+    XCTAssertNotEqual(copiedCreds.contentSid, contentSidToCheck);
+    XCTAssertEqual(origCreds.contentSid, copiedCreds.contentSid);
+    XCTAssertNotEqual(copiedCreds.csrfToken, csrfTokenToCheck);
+    XCTAssertEqual(origCreds.csrfToken, copiedCreds.csrfToken);
+    XCTAssertNotEqual(copiedCreds.parentSid, parentSidToCheck);
+    XCTAssertEqual(origCreds.parentSid, copiedCreds.parentSid);
+    XCTAssertNotEqual(copiedCreds.beaconChildConsumerKey, beaconChildConsumerKeyCheck);
+    XCTAssertEqual(origCreds.beaconChildConsumerKey, copiedCreds.beaconChildConsumerKey);
+    XCTAssertNotEqual(copiedCreds.beaconChildConsumerSecret, beaconChildConsumerSecretCheck);
+    XCTAssertEqual(origCreds.beaconChildConsumerSecret, copiedCreds.beaconChildConsumerSecret);
+
     XCTAssertEqual(copiedCreds.organizationId, orgIdToCheck);
     XCTAssertNotEqual(origCreds.organizationId, copiedCreds.organizationId);
     XCTAssertEqual(copiedCreds.instanceUrl, instanceUrlToCheck);
     XCTAssertNotEqual(origCreds.instanceUrl, copiedCreds.instanceUrl);
+    XCTAssertEqual(copiedCreds.apiInstanceUrl, apiInstanceUrlToCheck);
+    XCTAssertNotEqual(origCreds.apiInstanceUrl, copiedCreds.apiInstanceUrl);
     XCTAssertEqual(copiedCreds.communityId, communityIdToCheck);
     XCTAssertNotEqual(origCreds.communityId, copiedCreds.communityId);
     XCTAssertEqual(copiedCreds.communityUrl, communityUrlToCheck);
@@ -244,6 +332,20 @@ static NSString * const kTestRefreshToken = @"HowRefreshing";
     XCTAssertNotEqual(origCreds.identityUrl, copiedCreds.identityUrl);
     XCTAssertEqual(copiedCreds.userId, userIdToCheck);
     XCTAssertNotEqual(origCreds.userId, copiedCreds.userId);
+    XCTAssertEqual(copiedCreds.contentDomain, contentDomainToCheck);
+    XCTAssertNotEqual(origCreds.contentDomain, copiedCreds.contentDomain);
+    XCTAssertEqual(copiedCreds.lightningDomain, lightningDomainToCheck);
+    XCTAssertNotEqual(origCreds.lightningDomain, copiedCreds.lightningDomain);
+    XCTAssertEqual(copiedCreds.vfDomain, vfDomainToCheck);
+    XCTAssertNotEqual(origCreds.vfDomain, copiedCreds.vfDomain);
+    XCTAssertEqual(copiedCreds.cookieClientSrc, cookieClientSrcToCheck);
+    XCTAssertNotEqual(origCreds.cookieClientSrc, copiedCreds.cookieClientSrc);
+    XCTAssertEqual(copiedCreds.cookieSidClient, cookieSidClientToCheck);
+    XCTAssertNotEqual(origCreds.cookieSidClient, copiedCreds.cookieSidClient);
+    XCTAssertEqual(copiedCreds.sidCookieName, sidCookieNameToCheck);
+    XCTAssertNotEqual(origCreds.sidCookieName, copiedCreds.sidCookieName);
+    XCTAssertEqual(copiedCreds.tokenFormat, tokenFormatToCheck);
+    XCTAssertNotEqual(origCreds.tokenFormat, copiedCreds.tokenFormat);
     XCTAssertEqual(copiedCreds.additionalOAuthFields, additionalFieldsToCheck);
     XCTAssertNotEqual(origCreds.additionalOAuthFields, copiedCreds.additionalOAuthFields);
 }
@@ -315,16 +417,36 @@ static NSString * const kTestRefreshToken = @"HowRefreshing";
 - (void)testDefaultTokenEncryption {
     NSString *accessToken = @"AllAccessPass$";
     NSString *refreshToken = @"RefreshFRESHexciting!";
-    
+    NSString *lightningSid = @"lighting-sid-test";
+    NSString *vfSid = @"vf-sid-test";
+    NSString *contentSid = @"content-sid-test";
+    NSString *csrfToken = @"csrf-test";
+
     SFOAuthKeychainCredentials *credentials = [[SFOAuthKeychainCredentials alloc] initWithIdentifier:kIdentifier clientId:kClientId encrypted:YES];
     credentials.accessToken = accessToken;
     credentials.refreshToken = refreshToken;
-    
+    credentials.lightningSid = lightningSid;
+    credentials.vfSid = vfSid;
+    credentials.contentSid = contentSid;
+    credentials.csrfToken = csrfToken;
    
-    NSString *accessTokenVerify = [credentials accessTokenWithEncryptionKey:[credentials encryptionKeyForService:kSFOAuthServiceAccess]];
+    NSString *accessTokenVerify = [credentials decryptedTokenForService:kSFOAuthServiceAccess];
     XCTAssertEqualObjects(accessToken, accessTokenVerify, @"Access token should decrypt to the same value.");
-    NSString *refreshTokenVerify = [credentials refreshTokenWithEncryptionKey:[credentials encryptionKeyForService:kSFOAuthServiceRefresh]];
+
+    NSString *refreshTokenVerify = [credentials decryptedTokenForService:kSFOAuthServiceRefresh];
     XCTAssertEqualObjects(refreshToken, refreshTokenVerify, @"Refresh token should decrypt to the same value.");
+    
+    NSString *lightningSidVerify = [credentials decryptedTokenForService:kSFOAuthServiceLightningSid];
+    XCTAssertEqualObjects(lightningSid, lightningSidVerify, @"Lightning sid should decrypt to the same value.");
+
+    NSString *contentSidVerify = [credentials decryptedTokenForService:kSFOAuthServiceContentSid];
+    XCTAssertEqualObjects(contentSid, contentSidVerify, @"content sid should decrypt to the same value.");
+
+    NSString *vfSidVerify = [credentials decryptedTokenForService:kSFOAuthServiceVfSid];
+    XCTAssertEqualObjects(vfSid, vfSidVerify, @"vf sid should decrypt to the same value.");
+
+    NSString *csrfTokenVerify = [credentials decryptedTokenForService:kSFOAuthServiceCsrf];
+    XCTAssertEqualObjects(csrfToken, csrfTokenVerify, @"csrf token should decrypt to the same value.");
     
     [credentials revoke];
 }

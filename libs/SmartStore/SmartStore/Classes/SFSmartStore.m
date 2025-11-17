@@ -24,10 +24,8 @@
 
 //required for UIApplicationProtectedDataDidBecomeAvailable
 #import <UIKit/UIKit.h>
-#import "sqlite3.h"
-#import "FMDatabase.h"
-#import "FMDatabaseAdditions.h"
-#import "FMDatabaseQueue.h"
+@import SQLCipher;
+@import FMDB;
 #import "SFSmartStore+Internal.h"
 #import "SFSmartStoreUtils.h"
 #import "SFSmartSqlHelper.h"
@@ -54,6 +52,7 @@ static SFSmartStoreEncryptionKeyGenerator _encryptionKeyGenerator = NULL;
 static SFSmartStoreEncryptionSaltBlock _encryptionSaltBlock = NULL;
 static BOOL _jsonSerializationCheckEnabled = NO;
 static BOOL _postRawJsonOnError = NO;
+static NSString* _licenseKey = NULL;
 
 // The name of the store name used by the SFSmartStorePlugin for hybrid apps
 NSString * const kDefaultSmartStoreName   = @"defaultStore";
@@ -718,6 +717,14 @@ NSUInteger CACHES_COUNT_LIMIT = 1024;
     if (newEncryptionKeyGenerator != _encryptionKeyGenerator) {
         _encryptionKeyGenerator = newEncryptionKeyGenerator;
     }
+}
+
++ (NSString *)licenseKey {
+    return _licenseKey;
+}
+
++ (void)setLicenseKey:(NSString*)licenseKey {
+    _licenseKey = [licenseKey copy];
 }
 
 - (NSNumber *)currentTimeInMilliseconds {
@@ -2025,6 +2032,17 @@ NSUInteger CACHES_COUNT_LIMIT = 1024;
 - (NSString*) getSQLCipherVersion
 {
     return [[self queryPragma:@"cipher_version"] componentsJoinedByString:@""];
+}
+
+- (NSString*) getCipherProviderVersion
+{
+    return [[self queryPragma:@"cipher_provider_version"] componentsJoinedByString:@""];
+}
+
+- (BOOL) getCipherFIPSStatus
+{
+    NSString *cipherFIPSStatus = [[self queryPragma:@"cipher_fips_status"] componentsJoinedByString:@""];
+    return [cipherFIPSStatus isEqualToString:@"1"];
 }
 
 - (NSArray*) queryPragma:(NSString*) pragma

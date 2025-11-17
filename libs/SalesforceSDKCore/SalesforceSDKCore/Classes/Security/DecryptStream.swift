@@ -33,6 +33,7 @@ import CryptoKit
 public class DecryptStream: InputStream {
     private var key: SymmetricKey?
     private let stream: InputStream
+    private var _streamError: Error?
     
     override public var streamStatus: Stream.Status {
         return  stream.streamStatus
@@ -76,17 +77,24 @@ public class DecryptStream: InputStream {
     }
    
     override public func open() {
-        assert(key != nil, "EncryptStream - you must call setupEncryptionKey first")
+        guard key != nil else {
+            _streamError = NSError(domain: "DecryptStream", code: 1, userInfo: [NSLocalizedDescriptionKey: "Decryption key not set."])
+            return
+        }
+        _streamError = nil
         stream.open()
     }
     
     override public func read(_ buffer: UnsafeMutablePointer<UInt8>, maxLength len: Int) -> Int {
         guard let key = key else {
+            _streamError = NSError(domain: "DecryptStream", code: 1, userInfo: [NSLocalizedDescriptionKey: "Decryption key not set."])
             return -1
         }
         
         let numberOfBlocks = len < CryptStream.chunkSize ? 1 : len / CryptStream.chunkSize
         let encryptedBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: CryptStream.sealedBoxSize)
+        defer { encryptedBuffer.deallocate() }
+
         var readCount = 0
         for _ in 1...numberOfBlocks {
             let bytesRead = stream.read(encryptedBuffer, maxLength: CryptStream.sealedBoxSize)
@@ -98,12 +106,14 @@ public class DecryptStream: InputStream {
                 guard decryptedData.count <= CryptStream.chunkSize else {
                     // Should never get here
                     SalesforceLogger.e(DecryptStream.self, message: "Returned decrypted data is larger than the encryption block size")
+                    _streamError = NSError(domain: "DecryptStream", code: 2, userInfo: [NSLocalizedDescriptionKey: "Returned decrypted data is larger than the encryption block size"])
                     return -1
                 }
                 decryptedData.copyBytes(to: buffer.advanced(by: readCount), count: decryptedData.count)
                 readCount += decryptedData.count
             } catch {
                 SalesforceLogger.e(DecryptStream.self, message: "Error decrypting data to stream: \(error)")
+                _streamError = error
                 return readCount == 0 ? -1 : readCount
             }
         }
@@ -120,5 +130,10 @@ public class DecryptStream: InputStream {
     
     override public func close() {
         stream.close()
+        _streamError = nil
+    }
+
+    override public var streamError: Error? {
+        return _streamError ?? stream.streamError
     }
 }

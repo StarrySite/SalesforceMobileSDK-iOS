@@ -40,30 +40,99 @@
 @implementation SFSDKAuthHelper
 
 + (void)loginIfRequired:(void (^)(void))completionBlock {
-    UIScene *scene = [[SFSDKWindowManager sharedManager] defaultScene];
-    [SFSDKAuthHelper loginIfRequired:scene completion:completionBlock];
+    [SFSDKAuthHelper
+     loginIfRequired:[[SFSDKWindowManager sharedManager] defaultScene]
+     completion:completionBlock];
 }
 
-+ (void)loginIfRequired:(UIScene *)scene completion:(void (^)(void))completionBlock {
++ (void)loginIfRequired:(UIScene *)scene
+             completion:(void (^)(void))completionBlock
+{
+    [SFSDKAuthHelper
+     loginIfRequired:scene
+     frontDoorBridgeUrl:nil
+     codeVerifier:nil
+     completion:completionBlock];
+}
+
++ (void)loginIfRequired:(UIScene *)scene
+              loginHint:(NSString *)loginHint
+              loginHost:(NSString *)loginHost
+             completion:(void (^)(void))completionBlock
+{
+    [self loginIfRequired:scene
+                loginHint:loginHint
+                loginHost:loginHost
+       frontDoorBridgeUrl:nil
+             codeVerifier:nil
+               completion:completionBlock];
+}
+
++ (void)loginIfRequired:(UIScene *)scene
+              loginHint:(NSString *)loginHint
+              loginHost:(NSString *)loginHost
+     frontDoorBridgeUrl:(NSURL * )frontDoorBridgeUrl
+           codeVerifier:(NSString *)codeVerifier
+             completion:(void (^)(void))completionBlock
+{
+    if (!scene) {
+        scene = [[SFSDKWindowManager sharedManager] defaultScene];
+    }
+    
     [SFSDKAuthHelper registerBlockForLoginNotification:^{
         if (completionBlock) {
             completionBlock();
         }
     }];
 
-    if (![SFUserAccountManager sharedInstance].currentUser && [SalesforceSDKManager sharedManager].appConfig.shouldAuthenticate) {
+    if (frontDoorBridgeUrl || [self isDeepLink:loginHost] || [self shouldAuthenticateNewUser]) {
         SFUserAccountManagerFailureCallbackBlock failureBlock = ^(SFOAuthInfo *authInfo, NSError *authError) {
             [SFSDKCoreLogger e:[self class] format:@"Authentication failed: %@.", [authError localizedDescription]];
         };
-        BOOL result = [[SFUserAccountManager sharedInstance] loginWithCompletion:nil failure:failureBlock scene:scene];
+        BOOL result = [[SFUserAccountManager sharedInstance]
+                       loginWithCompletion:nil
+                       failure:failureBlock
+                       scene:scene
+                       loginHint:loginHint
+                       loginHost:loginHost
+                       frontDoorBridgeUrl:frontDoorBridgeUrl
+                       codeVerifier:codeVerifier];
         if (!result) {
             [[SFUserAccountManager sharedInstance] stopCurrentAuthentication:^(BOOL result) {
-                [[SFUserAccountManager sharedInstance] loginWithCompletion:nil failure:failureBlock scene:scene];
+                [[SFUserAccountManager sharedInstance]
+                 loginWithCompletion:nil
+                 failure:failureBlock
+                 scene:scene
+                 loginHint:loginHint
+                 loginHost:loginHost
+                 frontDoorBridgeUrl:frontDoorBridgeUrl
+                 codeVerifier:codeVerifier];
             }];
         }
     } else {
         [self screenLockValidation:completionBlock];
     }
+}
+
++ (BOOL)isDeepLink:(NSString *)host {
+    return [host length] > 0;
+}
+
++ (BOOL)shouldAuthenticateNewUser {
+    return ![SFUserAccountManager sharedInstance].currentUser && [SalesforceSDKManager sharedManager].appConfig.shouldAuthenticate;
+}
+
++ (void)loginIfRequired:(UIScene *)scene
+     frontDoorBridgeUrl:(NSURL * )frontDoorBridgeUrl
+           codeVerifier:(NSString *)codeVerifier
+             completion:(void (^)(void))completionBlock
+{
+    [self loginIfRequired:scene
+                loginHint:nil
+                loginHost:nil
+       frontDoorBridgeUrl:frontDoorBridgeUrl
+             codeVerifier:codeVerifier
+               completion:completionBlock];
 }
 
 +(void)screenLockValidation:(void (^)(void))completionBlock  {

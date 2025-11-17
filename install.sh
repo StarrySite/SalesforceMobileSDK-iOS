@@ -7,8 +7,8 @@
 #
 
 # Check for iOS SDK minimum version
-IOS_MIN_VERSION_NUM=150
-IOS_MIN_VERSION_STR="iOS 15.0"
+IOS_MIN_VERSION_NUM=170
+IOS_MIN_VERSION_STR="iOS 17.0"
 ios_ver=`xcodebuild -version -sdk iphoneos | grep SDKVersion:`
 if [[ "$ios_ver" == "" ]]
 then
@@ -24,8 +24,8 @@ then
 fi
 
 # Check for Xcode minimum version
-XCODE_MIN_VERSION=130
-XCODE_MIN_VERSION_STR="Xcode 13.0"
+XCODE_MIN_VERSION=160
+XCODE_MIN_VERSION_STR="Xcode 16.0"
 xcode_ver=`xcodebuild -version | grep ^Xcode`
 if [[ "$xcode_ver" == "" ]]
 then
@@ -38,27 +38,6 @@ if [[ $xcode_ver_num -lt $XCODE_MIN_VERSION ]]
 then
     echo "Current configured Xcode version ($xcode_ver_str) is less than the minimum required version ($XCODE_MIN_VERSION_STR)."
     exit 4
-fi
-
-# Sync submodules
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
-git submodule init
-git submodule sync
-git submodule update --init --recursive
-
-# Remove the old Xcode templates, if they still exist.
-hybrid_template_dir="${HOME}/Library/Developer/Xcode/Templates/Project Templates/Application/Hybrid Force.com App.xctemplate"
-native_template_dir="${HOME}/Library/Developer/Xcode/Templates/Project Templates/Application/Native Force.com REST App.xctemplate"
-if [[ -d "${hybrid_template_dir}" ]]
-then
-    echo 'Removing old hybrid template from Xcode.'
-    rm -rf "${hybrid_template_dir}"
-fi
-if [[ -d "${native_template_dir}" ]]
-then
-    echo 'Removing old native template from Xcode.'
-    rm -rf "${native_template_dir}"
 fi
 
 # Create test_credentials.json if needed to avoid build errors

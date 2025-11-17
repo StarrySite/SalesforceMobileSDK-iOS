@@ -30,6 +30,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef void (^SFRestRequestFailBlock) (id _Nullable response, NSError * _Nullable e, NSURLResponse * _Nullable rawResponse) NS_SWIFT_NAME(RestRequestFailBlock);
+typedef void (^SFRestResponseBlock) (id _Nullable response, NSURLResponse * _Nullable rawResponse) NS_SWIFT_NAME(RestResponseBlock);
 /*
  * Domain used for errors reported by the rest API (non HTTP errors)
  * (for example, passing an invalid SOQL string when doing a query)
@@ -42,7 +44,7 @@ extern NSString* const kSFRestErrorDomain NS_SWIFT_NAME(SFRestErrorDomain);
 extern NSInteger const kSFRestErrorCode NS_SWIFT_NAME(SFRestErrorCode);
 
 /*
- * Default API version (currently "v55.0")
+ * Default API version (currently "v63.0")
  * You can override this by using setApiVersion:
  */
 extern NSString* const kSFRestDefaultAPIVersion NS_SWIFT_NAME(SFRestDefaultAPIVersion);
@@ -75,7 +77,7 @@ NS_SWIFT_NAME(RestClient)
 
 /**
  * The REST API version used for all the calls.
-* The default value is `kSFRestDefaultAPIVersion` (currently "v55.0")
+* The default value is `kSFRestDefaultAPIVersion` (currently "v63.0")
  */
 @property (nonatomic, strong) NSString *apiVersion;
 
@@ -129,15 +131,34 @@ NS_SWIFT_NAME(RestClient)
  */
 - (void)send:(SFRestRequest *)request requestDelegate:(nullable id<SFRestRequestDelegate>)requestDelegate;
 
+/**
+ * Sends a REST request to the Salesforce server
+ *
+ * @param request `SFRestRequest` object to be sent.
+ * @param failureBlock Block that is called back for failure of request
+ * @param successBlock Block that is called back for success of request
+ */
+- (void)send:(SFRestRequest *_Nonnull)request
+failureBlock:(SFRestRequestFailBlock _Nonnull )failureBlock
+successBlock:(SFRestResponseBlock _Nonnull )successBlock;
+
 ///---------------------------------------------------------------------------------------
 /// @name SFRestRequest factory methods
 ///---------------------------------------------------------------------------------------
 
 /**
- * Returns an `SFRestRequest` object that contains information associated with the current user.
+ * Returns an `SFRestRequest` object that returns information associated with the current user.
  * @see https://help.salesforce.com/articleView?id=remoteaccess_using_userinfo_endpoint.htm
  */
 - (SFRestRequest *)requestForUserInfo;
+
+/**
+ * Returns an `SFRestRequest` object that returns URL to bridge into UI sessions (a front door URL).
+ * @param redirectUri A relative path that points to where the user is redirected when their new session begins.
+ * @see https://help.salesforce.com/s/articleView?id=sf.frontdoor_singleaccess.htm
+ */
+- (SFRestRequest *)requestForSingleAccess:(NSString *)redirectUri;
+
 
 /**
  * Returns an `SFRestRequest` object that lists summary information about each

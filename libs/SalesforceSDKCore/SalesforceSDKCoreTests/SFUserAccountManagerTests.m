@@ -247,7 +247,7 @@ static NSString * const kOrgIdFormatString = @"00D000000000062EA%lu";
         }
     }
     
-       // Remove and verify that allUserAccounts property implicitly loads the accounts from disk.
+    // Remove and verify that allUserAccounts property implicitly loads the accounts from disk.
     [self.uam clearAllAccountState];
     NSError *error =nil;
     [self.uam loadAccounts:&error];
@@ -309,6 +309,8 @@ static NSString * const kOrgIdFormatString = @"00D000000000062EA%lu";
 }
 
 - (void)testLoginHostForSwitchToUser {
+    [SFUserAccountManager sharedInstance].nativeLoginEnabled = NO;
+    
     NSArray *accounts = [self createAndVerifyUserAccounts:2];
     SFUserAccount *origUser = accounts[0];
     self.uam.loginHost = @"my.prev.domain";
@@ -624,7 +626,7 @@ static NSString * const kOrgIdFormatString = @"00D000000000062EA%lu";
 
 - (void)testUserAccountEncoding {
     NSData *data;
-    NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initRequiringSecureCoding:NO];
+    NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initRequiringSecureCoding:YES];
 
     // Setup credentials
     SFOAuthCredentials *credentials = [[SFOAuthCredentials alloc] initWithIdentifier:[NSString stringWithFormat:@"identifier-%lu", (unsigned long)index] clientId:@"fakeClientIdForTesting" encrypted:YES];
@@ -658,7 +660,7 @@ static NSString * const kOrgIdFormatString = @"00D000000000062EA%lu";
     XCTAssertNotNil(userOut.idData, @"couldn't unarchive idData");
    
     XCTAssertEqualObjects(userIn.customData, userOut.customData, @"customData mismatch");
-    XCTAssertEqualObjects(userIn.accessScopes, userOut.accessScopes, @"accessScopes mismatch");
+    XCTAssertEqual(userIn.accessScopes.count, userOut.accessScopes.count);
     XCTAssertEqual(userIn.accessRestrictions, userOut.accessRestrictions, @"accessRestrictions mismatch");
 }
 

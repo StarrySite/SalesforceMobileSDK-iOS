@@ -22,9 +22,9 @@
  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "SFOAuthCoordinator.h"
 #import "SFSDKAuthSession.h"
-@class SFOAuthInfo;
+#import "SalesforceSDKCore/SalesforceSDKCore.h"
+#import "SalesforceSDKCore/SalesforceSDKCore-Swift.h"
 
 typedef NS_ENUM(NSUInteger, SFOAuthTokenEndpointFlow) {
     SFOAuthTokenEndpointFlowNone = 0,
@@ -43,11 +43,14 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *approvalCode;
 @property (nonatomic, strong, nullable) WKWebView *view;
 @property (nonatomic, strong, nullable) NSString *codeVerifier;
-@property (nonatomic, strong, nullable) SFOAuthInfo *authInfo;
-@property (nonatomic, readwrite) SFOAuthAdvancedAuthState advancedAuthState;
+@property (nonatomic, strong, nonnull) SFOAuthInfo *authInfo;
 @property (nonatomic, copy) NSString *origWebUserAgent;
 @property (nonatomic, strong ,nullable) SFOAuthCredentials *spAppCredentials;
 @property (nonatomic, weak, nullable) SFSDKAuthSession *authSession;
+
+@property (nonatomic, strong, nullable) SFSDKAuthCoordinatorFrontdoorBridgeLoginOverride *frontdoorBridgeLoginOverride;
+
+@property (nonatomic, strong, nullable) NSString *loginHint;
 
 - (instancetype)initWithAuthSession:(SFSDKAuthSession *)authSession;
 

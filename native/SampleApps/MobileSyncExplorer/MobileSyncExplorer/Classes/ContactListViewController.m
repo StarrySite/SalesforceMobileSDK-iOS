@@ -25,10 +25,9 @@
 #import "ContactListViewController.h"
 #import "ActionsPopupController.h"
 #import "ContactDetailViewController.h"
-#import <SalesforceSDKCore/SFDefaultUserManagementViewController.h>
-#import <SalesforceSDKCore/SFUserAccountManager.h>
-#import <SalesforceSDKCore/SalesforceSDKManager.h>
-#import <SmartStore/SFSmartStoreInspectorViewController.h>
+
+@import SalesforceSDKCore;
+@import SmartStore;
 
 static NSString * const kNavBarTitleText                = @"Contacts";
 static NSUInteger const kNavBarTintColor                = 0xf10000;
@@ -167,21 +166,21 @@ static NSUInteger const kColorCodesList[] = { 0x1abc9c,  0x2ecc71,  0x3498db,  0
     
     // To address iOS 15 spacing issue
     // See https://developer.apple.com/forums/thread/684706
-    #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 150000
-    if (@available(iOS 15.0, *)) {
-        [self.tableView setSectionHeaderTopPadding:0.0f];
-    }
-    #endif
+    [self.tableView setSectionHeaderTopPadding:0.0f];
 }
 
 - (void)viewWillLayoutSubviews {
-    CGRect navBarFrame = self.navigationController.navigationBar.frame;
-    UIImage *rightButtonImage = self.navigationItem.rightBarButtonItem.image;
-    CGRect navBarLabelFrame = CGRectMake(0,
-                                         0,
-                                         navBarFrame.size.width - rightButtonImage.size.width,
-                                         navBarFrame.size.height);
-    self.navBarLabel.frame = navBarLabelFrame;
+    if (@available(iOS 26, *)) {
+        // No-op - skipping code in else block for iOS 26 because the view controller doesn't display with it
+    } else {
+        CGRect navBarFrame = self.navigationController.navigationBar.frame;
+        UIImage *rightButtonImage = self.navigationItem.rightBarButtonItem.image;
+        CGRect navBarLabelFrame = CGRectMake(0,
+                                             0,
+                                             navBarFrame.size.width - rightButtonImage.size.width,
+                                             navBarFrame.size.height);
+        self.navBarLabel.frame = navBarLabelFrame;
+    }
     [self layoutSearchHeader];
 
     [self layoutToastView];

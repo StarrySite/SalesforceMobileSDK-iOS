@@ -139,4 +139,35 @@ class SFSDKAuthUtilTests: XCTestCase {
         let error = try XCTUnwrap(response.error)
         XCTAssertTrue((error.error as NSError).code == kSFOAuthErrorInvalidGrant)
     }
+    
+    func testRevokeToken() throws {
+        let credentials = try XCTUnwrap(currentUser?.credentials)
+        let request = SFSDKOAuth2.request(forRevokeRefreshToken: credentials, reason: .userInitiated)
+        
+        // Verify HTTP method is POST
+        XCTAssertEqual(request.httpMethod, "POST")
+        
+        // Verify content type header
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/x-www-form-urlencoded")
+        
+        // Verify HTTP body contains expected parameters
+        let httpBody = try XCTUnwrap(request.httpBody)
+        let bodyString = try XCTUnwrap(String(data: httpBody, encoding: .utf8))
+        var bodyComponents = URLComponents()
+        bodyComponents.query = bodyString
+        let queryItems = try XCTUnwrap(bodyComponents.queryItems)
+        
+        XCTAssertEqual(queryItems.count, 2)
+        XCTAssertTrue(queryItems.contains(where: { item in
+            item.name == "token" && item.value == credentials.refreshToken
+        }))
+        XCTAssertTrue(queryItems.contains(where: { item in
+            item.name == "revoke_reason" && item.value == "user_logout"
+        }))
+        
+        // Verify URL has no query parameters
+        let url = try XCTUnwrap(request.url?.absoluteString)
+        let urlComponents = try XCTUnwrap(URLComponents(string: url))
+        XCTAssertNil(urlComponents.queryItems)
+    }
 }
