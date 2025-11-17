@@ -46,7 +46,7 @@ public class ScreenLockManagerInternal: NSObject, ScreenLockManager {
     }
     
     @objc public static let shared = ScreenLockManagerInternal()
-    
+    public var screenLockUiConfiguration = ScreenLockViewConfiguration()
     private let kScreenLockIdentifier = "com.salesforce.security.screenlock"
     private var callbackBlock: ScreenLockCallbackBlock? = nil
     var backgroundTimestamp: Double = 0
@@ -236,8 +236,12 @@ public class ScreenLockManagerInternal: NSObject, ScreenLockManager {
         NotificationCenter.default.post(name: Notification.Name(rawValue: kSFScreenLockFlowWillBegin), object: nil)
         
         // Launch Screen Lock
-        let screenLockViewController = UIHostingController(rootView: ScreenLockUIView())
+        let screenLockViewController = UIHostingController(rootView: ScreenLockRetryUIView(configuration: screenLockUiConfiguration))
         screenLockViewController.modalPresentationStyle = .fullScreen
+      
+        // User can switch back to host app, while lock window is already presented.
+        // So, need to remove previously presented lock window before showing new one.
+        SFSDKWindowManager.shared().screenLockWindow().dismissWindow()
         SFSDKWindowManager.shared().screenLockWindow().presentWindow(animated: false) {
             SFSDKWindowManager.shared().screenLockWindow().viewController?.present(screenLockViewController, animated: false, completion: nil)
         }
